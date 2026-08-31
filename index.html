@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Queen Laundry - Kasir Pro Ultimate v1</title>
+    <title>Queen Laundry - Kasir Pro Ultimate v2</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#db2777">
@@ -20,18 +20,68 @@
         #printable-nota { position: absolute; left: 0; top: 0; width: 100%; }
         #printable-laporan { position: absolute; left: 0; top: 0; width: 100%; }
       }
+
+      /* Splash Screen / Opening Animation Style */
+      #splash-screen {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: #fdf2f4;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 99999;
+          transition: opacity 0.6s ease, visibility 0.6s ease;
+      }
+      #splash-screen.fade-out {
+          opacity: 0;
+          visibility: hidden;
+      }
+      .splash-logo-img {
+          width: 130px;
+          height: 130px;
+          object-fit: contain;
+          border-radius: 50%;
+          box-shadow: 0 10px 25px rgba(236, 72, 153, 0.2);
+          animation: pulseLogo 1.5s infinite alternate;
+      }
+      .splash-loading-text {
+          margin-top: 18px;
+          font-size: 13px;
+          color: #db2777;
+          font-weight: 700;
+          letter-spacing: 1px;
+      }
+      @keyframes pulseLogo {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.08); }
+      }
     </style>
 </head>
 
 <body class="bg-gray-100 font-sans antialiased pb-24">
 
+    <!-- SPLASH SCREEN / OPENING APLIKASI -->
+    <div id="splash-screen">
+        <img id="splash-logo-display" src="logo-queen.png" alt="Queen Laundry Logo" class="splash-logo-img">
+        <div class="splash-loading-text">MEMUAT SISTEM KASIR...</div>
+    </div>
+
     <header class="bg-pink-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
         <div>
-            <h1 class="font-bold text-lg"><i class="fa-solid fa-shirt mr-2"></i> Queen Laundry</h1>
-            <p class="text-xs text-pink-100" id="current-date-header">Senin, 31 Agustus 2026</p>
+            <h1 class="font-bold text-lg"><i class="fa-solid fa-shirt mr-2"></i> <span id="header-store-name">Queen Laundry</span></h1>
+            <p class="text-xs text-pink-100" id="current-date-header">Senin, 1 September 2026</p>
         </div>
-        <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner">
-            <i class="fa-solid fa-wallet mr-1"></i> <span id="header-pendapatan">Rp 0</span>
+        <div class="flex items-center space-x-2">
+            <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner">
+                <i class="fa-solid fa-wallet mr-1"></i> <span id="header-pendapatan">Rp 0</span>
+            </div>
+            <button onclick="switchView('view-pengaturan')" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-xs transition shadow" title="Pengaturan">
+                <i class="fa-solid fa-gear"></i>
+            </button>
         </div>
     </header>
 
@@ -120,14 +170,13 @@
                     </div>
                 </div>
 
-                <!-- FORM TAMBAH ITEM KE KERANJANG (DENGAN DESAIN CARD LAYANAN YANG ELEGAN) -->
+                <!-- FORM TAMBAH ITEM KE KERANJANG -->
                 <div class="bg-pink-50/60 p-3 rounded-2xl border border-pink-100 space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-xs font-bold text-gray-700"><i class="fa-solid fa-cart-plus mr-1 text-pink-600"></i> Pilih Layanan Laundry</span>
                         <span onclick="switchView('view-layanan')" class="text-[10px] text-pink-600 font-bold cursor-pointer hover:underline">Kelola Katalog+</span>
                     </div>
 
-                    <!-- Kotak Pencarian Layanan Cepat -->
                     <div>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -137,12 +186,8 @@
                         </div>
                     </div>
 
-                    <!-- Grid Card Pilihan Layanan -->
-                    <div id="katalog-grid-container" class="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-                        <!-- Render interaktif dinamis -->
-                    </div>
+                    <div id="katalog-grid-container" class="max-h-52 overflow-y-auto space-y-1.5 pr-1"></div>
 
-                    <!-- Indikator Layanan Terpilih -->
                     <div id="selected-service-banner" class="hidden bg-white border border-pink-300 p-2.5 rounded-xl flex justify-between items-center shadow-xs">
                         <div>
                             <span class="text-[10px] text-gray-400 block uppercase font-bold tracking-wider">Layanan Dipilih</span>
@@ -171,9 +216,8 @@
                     </button>
                 </div>
 
-                <!-- DAFTAR ITEM DALAM KERANJANG NOTA -->
                 <div>
-                    <label class="text-xs text-gray-500 font-medium">Rincian Layanan Dipilih (Dapat Lebih dari Satu)</label>
+                    <label class="text-xs text-gray-500 font-medium">Rincian Layanan Dipilih</label>
                     <div id="keranjang-container" class="mt-1 space-y-2">
                         <div class="text-center p-3 text-xs text-gray-400 bg-gray-50 rounded-xl border border-dashed">Belum ada layanan ditambahkan</div>
                     </div>
@@ -253,7 +297,10 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="font-bold text-gray-800 text-sm">Daftar Member & Saldo Kuota</h3>
-                    <input type="text" id="search-member" oninput="renderDaftarPelanggan()" placeholder="Cari member..." class="p-2 border rounded-xl text-xs w-36 bg-gray-50">
+                    <div class="flex space-x-1">
+                        <input type="text" id="search-member" oninput="renderDaftarPelanggan()" placeholder="Cari..." class="p-2 border rounded-xl text-xs w-28 bg-gray-50">
+                        <button onclick="resetSemuaSaldoMember()" class="bg-amber-100 text-amber-700 px-2 py-1 rounded-xl text-[10px] font-bold" title="Reset Semua Saldo">Reset Semua</button>
+                    </div>
                 </div>
                 <div id="list-pelanggan-container" class="space-y-2"></div>
             </div>
@@ -294,7 +341,10 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-gray-800 text-sm">Ringkasan Keuangan</h3>
-                    <button onclick="cetakLaporanKeuangan()" class="bg-pink-100 text-pink-700 px-2.5 py-1 rounded-lg text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak Laporan</button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="cetakLaporanKeuangan()" class="bg-pink-100 text-pink-700 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center"><i class="fa-solid fa-print mr-1"></i> Cetak</button>
+                        <button onclick="resetDataKeuangan()" class="bg-rose-100 text-rose-700 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center" title="Reset Semua Keuangan & Transaksi"><i class="fa-solid fa-rotate-right mr-1"></i> Reset</button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-center">
                     <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
@@ -319,14 +369,51 @@
             </div>
         </section>
 
+        <!-- PENGATURAN APLIKASI / TOKO -->
+        <section id="view-pengaturan" class="view-section hidden space-y-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm space-y-4">
+                <div class="flex items-center space-x-2 border-b pb-2">
+                    <i class="fa-solid fa-gear text-pink-600 text-lg"></i>
+                    <h3 class="font-bold text-gray-800 text-sm">Pengaturan Toko & Nota</h3>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="font-medium text-gray-600">Nama Toko Laundry</label>
+                        <input type="text" id="setting-store-name" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
+                    </div>
+                    <div>
+                        <label class="font-medium text-gray-600">Alamat Toko</label>
+                        <input type="text" id="setting-store-address" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
+                    </div>
+                    <div>
+                        <label class="font-medium text-gray-600">Ganti Foto Logo Toko / Nota (Dari Galeri)</label>
+                        <input type="file" id="setting-logo-file" accept="image/*" class="w-full mt-1 p-2 border rounded-xl text-xs bg-gray-50 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
+                        <p class="text-[10px] text-gray-400 mt-1">Pilih foto dari galeri HP untuk dijadikan logo toko & nota.</p>
+                    </div>
+                    <div>
+                        <label class="font-medium text-gray-600">Kata-Kata Terima Kasih (Footer Nota)</label>
+                        <textarea id="setting-footer-text" rows="3" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600" placeholder="Terima kasih telah mempercayakan cucian Anda..."></textarea>
+                    </div>
+
+                    <button onclick="simpanPengaturan()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-xs">
+                        SIMPAN PENGATURAN
+                    </button>
+                </div>
+            </div>
+            <button onclick="switchView('view-dashboard')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-xl text-sm">
+                Kembali ke Dashboard
+            </button>
+        </section>
+
         <!-- NOTA -->
         <section id="view-nota" class="view-section hidden space-y-4">
             <div id="printable-nota" class="bg-white p-6 rounded-2xl shadow-md space-y-4 text-xs">
                 <div class="text-center space-y-1">
-                    <i class="fa-solid fa-shirt text-pink-600 text-2xl"></i>
-                    <h2 class="font-bold text-base text-gray-800">QUEEN LAUNDRY</h2>
+                    <img id="nota-logo-img" src="logo-queen.png" alt="Logo" class="w-14 h-14 mx-auto object-contain rounded-full shadow-xs mb-1">
+                    <h2 class="font-bold text-base text-gray-800" id="nota-store-name">QUEEN LAUNDRY</h2>
                     <p class="text-gray-500">Premium Care Service</p>
-                    <p class="text-gray-500">Singaparna, Tasikmalaya</p>
+                    <p class="text-gray-500" id="nota-store-address">Singaparna, Tasikmalaya</p>
                 </div>
                 <hr class="border-dashed">
                 <div class="space-y-1 text-gray-700">
@@ -353,7 +440,7 @@
                 </div>
                 <hr class="border-dashed">
                 <div class="text-center font-bold text-sm" id="nota-status-label">STATUS: LUNAS</div>
-                <div class="text-center text-gray-400 pt-2 text-[10px]">
+                <div class="text-center text-gray-400 pt-2 text-[10px]" id="nota-footer-message">
                     Terima kasih telah mempercayakan<br>cucian Anda di <span class="font-bold text-pink-600">Queen Laundry</span>
                 </div>
             </div>
@@ -378,7 +465,7 @@
             <div id="printable-laporan" class="bg-white p-6 rounded-2xl shadow-md space-y-4 text-xs">
                 <div class="text-center space-y-1">
                     <h2 class="font-bold text-base text-gray-800">REKAPITULASI KEUANGAN</h2>
-                    <p class="font-bold text-pink-600">QUEEN LAUNDRY</p>
+                    <p class="font-bold text-pink-600" id="laporan-store-name">QUEEN LAUNDRY</p>
                     <p class="text-gray-500" id="laporan-tanggal-cetak">-</p>
                 </div>
                 <hr class="border-dashed">
@@ -421,9 +508,62 @@
     </nav>
 
     <script>
+        // SCRIPT HILANGKAN SPLASH SCREEN (Durasi 3.5 detik)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.classList.add('fade-out');
+                }
+            }, 3500);
+        });
+
         const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         const todayString = new Date().toLocaleDateString('id-ID', optionsDate);
         document.getElementById('current-date-header').innerText = todayString;
+
+        // PENGATURAN TOKO DEFAULT
+        let appSettings = JSON.parse(localStorage.getItem('ql_settings')) || {
+            storeName: 'Queen Laundry',
+            storeAddress: 'Singaparna, Tasikmalaya',
+            logoUrl: 'logo-queen.png',
+            footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry'
+        };
+
+        function applySettingsToUI() {
+            document.getElementById('header-store-name').innerText = appSettings.storeName;
+            document.getElementById('splash-logo-display').src = appSettings.logoUrl;
+            
+            // Isi form pengaturan jika dibuka
+            document.getElementById('setting-store-name').value = appSettings.storeName;
+            document.getElementById('setting-store-address').value = appSettings.storeAddress;
+            document.getElementById('setting-footer-text').value = appSettings.footerText;
+        }
+        applySettingsToUI();
+
+        function simpanPengaturan() {
+            appSettings.storeName = document.getElementById('setting-store-name').value || 'Queen Laundry';
+            appSettings.storeAddress = document.getElementById('setting-store-address').value || 'Singaparna, Tasikmalaya';
+            appSettings.footerText = document.getElementById('setting-footer-text').value || 'Terima kasih telah mempercayakan cucian Anda';
+
+            const fileInput = document.getElementById('setting-logo-file');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    appSettings.logoUrl = e.target.result;
+                    localStorage.setItem('ql_settings', JSON.stringify(appSettings));
+                    applySettingsToUI();
+                    alert('Pengaturan toko & logo galeri berhasil disimpan!');
+                    switchView('view-dashboard');
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                localStorage.setItem('ql_settings', JSON.stringify(appSettings));
+                applySettingsToUI();
+                alert('Pengaturan toko berhasil disimpan!');
+                switchView('view-dashboard');
+            }
+        }
 
         let dataPelanggan = JSON.parse(localStorage.getItem('ql_pelanggan')) || [
             { nama: 'Ahmad', telepon: '08123456789', saldo: 150000 }
@@ -437,24 +577,10 @@
             { nama: 'Cuci Setrika (Expres)', harga: 13000 },
             { nama: 'Cuci Kering (Expres)', harga: 10000 },
             { nama: 'Setrika Only (Expres)', harga: 8000 },
-            { nama: 'Drayer Only (Expres)', harga: 3500 },
-            { nama: 'Cuci Setrika (Kilat 8 Jam)', harga: 20000 },
-            { nama: 'Cuci Kering (Kilat 8 Jam)', harga: 15000 },
-            { nama: 'Drayer Only (Kilat 8 Jam)', harga: 7000 },
             { nama: 'Bedcover Single', harga: 20000 },
             { nama: 'Bedcover Double', harga: 25000 },
-            { nama: 'Bedcover Jumbo', harga: 30000 },
-            { nama: 'Boneka Kecil', harga: 15000 },
             { nama: 'Boneka Sedang', harga: 20000 },
-            { nama: 'Boneka Besar', harga: 25000 },
-            { nama: 'Celana Chino', harga: 12000 },
-            { nama: 'Handuk', harga: 5000 },
-            { nama: 'Jaket Biasa', harga: 20000 },
-            { nama: 'Jaket Tebal', harga: 25000 },
-            { nama: 'Seprai', harga: 5000 },
-            { nama: 'Karpet kecil', harga: 25000 },
             { nama: 'Karpet Sedang', harga: 30000 },
-            { nama: 'Karpet Besar', harga: 35000 },
             { nama: 'Jas', harga: 35000 }
         ];
         
@@ -468,7 +594,7 @@
         let currentFilterStatus = 'SEMUA';
         let lastCreatedOrder = null;
         let chartInstance = null;
-        let selectedKatalogItem = null; // Menyimpan layanan yang sedang dipilih via Card Grid
+        let selectedKatalogItem = null;
 
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
@@ -588,7 +714,6 @@
             }
         }
 
-        // FUNGSI RENDER KATALOG DALAM BENTUK CARD GRID INTERAKTIF YANG ESTETIK
         function renderKatalogGrid() {
             const container = document.getElementById('katalog-grid-container');
             const searchInput = document.getElementById('search-katalog-kasir');
@@ -627,8 +752,6 @@
 
         function pilihLayananCard(layanan) {
             selectedKatalogItem = layanan;
-            
-            // Tampilkan banner indikator terpilih
             const banner = document.getElementById('selected-service-banner');
             const nameEl = document.getElementById('txt-selected-service-name');
             const priceEl = document.getElementById('txt-selected-service-price');
@@ -638,7 +761,6 @@
                 nameEl.innerText = layanan.nama;
                 priceEl.innerText = `Rp${Number(layanan.harga).toLocaleString('id-ID')}`;
             }
-
             renderKatalogGrid();
         }
 
@@ -665,7 +787,6 @@
                     satuan: satuan
                 });
             }
-
             renderKeranjang();
         }
 
@@ -696,7 +817,6 @@
                         <button type="button" onclick="hapusItemKeranjang(${idx})" class="text-rose-500 p-1 font-bold"><i class="fa-solid fa-trash"></i></button>
                     </div>`;
             });
-
             hitungTotalBelanja();
         }
 
@@ -766,6 +886,7 @@
                         </div>
                         <div class="space-x-1 flex items-center">
                             <button onclick="topUpSaldo(${realIndex})" class="bg-pink-100 text-pink-700 px-2 py-1 rounded-lg text-xs font-bold" title="Top Up Kuota">+ Top Up</button>
+                            <button onclick="resetSaldoMember(${realIndex})" class="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-xs font-bold" title="Reset Saldo ke 0">Reset</button>
                             <button onclick="hapusPelanggan(${realIndex})" class="text-rose-500 text-xs font-bold p-1"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </div>`;
@@ -784,6 +905,24 @@
                 } else {
                     alert('Nominal top up tidak valid!');
                 }
+            }
+        }
+
+        function resetSaldoMember(index) {
+            if(confirm(`Yakin ingin mereset saldo kuota ${dataPelanggan[index].nama} menjadi Rp0?`)) {
+                dataPelanggan[index].saldo = 0;
+                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                renderDaftarPelanggan();
+                alert(`Saldo kuota ${dataPelanggan[index].nama} berhasil direset menjadi Rp0.`);
+            }
+        }
+
+        function resetSemuaSaldoMember() {
+            if(confirm('PERINGATAN: Yakin ingin mereset saldo kuota SEMUA member menjadi Rp0?')) {
+                dataPelanggan.forEach(p => { p.saldo = 0; });
+                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                renderDaftarPelanggan();
+                alert('Semua saldo kuota member berhasil direset menjadi Rp0.');
             }
         }
 
@@ -844,6 +983,18 @@
             if(amountEl) amountEl.value = '';
             alert('Pengeluaran berhasil dicatat!');
             updateDashboardKeuangan();
+        }
+
+        function resetDataKeuangan() {
+            if(confirm('PERINGATAN KERAS: Aksi ini akan mereset dan menghapus SEMUA riwayat order/pemasukan, metode pembayaran, serta riwayat pengeluaran toko menjadi Rp0. Lanjutkan?')) {
+                dataOrder = [];
+                dataPengeluaran = [];
+                localStorage.removeItem('ql_order');
+                localStorage.removeItem('ql_expense');
+                updateDashboardKeuangan();
+                if(chartInstance) renderChartAnalitik();
+                alert('Semua data keuangan dan transaksi toko berhasil direset bersih!');
+            }
         }
 
         function prosesPembayaran() {
@@ -933,6 +1084,12 @@
             dataOrder.unshift(newOrder);
             localStorage.setItem('ql_order', JSON.stringify(dataOrder));
 
+            // Set Data ke Nota Tampilan
+            document.getElementById('nota-store-name').innerText = appSettings.storeName;
+            document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
+            document.getElementById('nota-logo-img').src = appSettings.logoUrl;
+            document.getElementById('nota-footer-message').innerHTML = appSettings.footerText.replace(/\n/g, '<br>');
+
             document.getElementById('nota-id').innerText = invoiceId;
             document.getElementById('nota-tanggal').innerText = todayString;
             document.getElementById('nota-pelanggan').innerText = newOrder.nama;
@@ -1018,11 +1175,9 @@
                 o.items.forEach(i => {
                     itemStr += `• ${i.nama} (${i.qty} ${i.satuan}) - Rp${(i.harga * i.qty).toLocaleString('id-ID')}\n`;
                 });
-            } else {
-                itemStr = `• ${o.layanan} (${o.berat} ${o.satuanLabel || 'Unit'})\n`;
             }
 
-            let pesan = `Halo Kak *${o.nama}*,\n\nTerima kasih telah mempercayakan cucian Anda di *Queen Laundry* 👕✨\n\n*Detail Nota (${o.id}):* \n${itemStr}\n*Total Tagihan: Rp${Number(o.total).toLocaleString('id-ID')}*\n• Dibayar: Rp${Number(o.bayar).toLocaleString('id-ID')}\n${o.sisa > 0 ? '• Sisa Tagihan: *Rp' + Number(o.sisa).toLocaleString('id-ID') + '*\n• Status Bayar: *BELUM LUNAS*\n' : '• Status Bayar: *LUNAS*\n'}\n• Metode: ${o.metode === 'Member' ? 'Potong Saldo Member' : o.metode}\n• Status Cucian: *${o.status}*\n${o.catatan ? '• Catatan: ' + o.catatan + '\n' : ''}\nCucian Anda sedang kami proses dengan perawatan terbaik. Terima kasih! 🙏`;
+            let pesan = `Halo Kak *${o.nama}*,\n\nTerima kasih telah mempercayakan cucian Anda di *${appSettings.storeName}* 👕✨\n\n*Detail Nota (${o.id}):* \n${itemStr}\n*Total Tagihan: Rp${Number(o.total).toLocaleString('id-ID')}*\n• Dibayar: Rp${Number(o.bayar).toLocaleString('id-ID')}\n${o.sisa > 0 ? '• Sisa Tagihan: *Rp' + Number(o.sisa).toLocaleString('id-ID') + '*\n• Status Bayar: *BELUM LUNAS*\n' : '• Status Bayar: *LUNAS*\n'}\n• Metode: ${o.metode === 'Member' ? 'Potong Saldo Member' : o.metode}\n• Status Cucian: *${o.status}*\n${o.catatan ? '• Catatan: ' + o.catatan + '\n' : ''}\n${appSettings.footerText} 🙏`;
 
             let url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(pesan)}`;
             window.open(url, '_blank');
@@ -1082,8 +1237,6 @@
                     o.items.forEach(i => {
                         itemSummaryHtml += `<div class="text-xs text-gray-600">• ${i.nama} (${i.qty} ${i.satuan})</div>`;
                     });
-                } else {
-                    itemSummaryHtml += `<div class="text-xs text-gray-600">• ${o.layanan} (${o.berat} ${o.satuanLabel || 'Unit'})</div>`;
                 }
 
                 container.innerHTML += `
@@ -1235,6 +1388,7 @@
             dataPengeluaran.forEach(e => totalPengeluaran += (Number(e.amount) || 0));
             let saldoBersih = totalPendapatanMasuk - totalPengeluaran;
 
+            document.getElementById('laporan-store-name').innerText = appSettings.storeName;
             const lapTgl = document.getElementById('laporan-tanggal-cetak');
             const lapPem = document.getElementById('lap-tot-pemasukan');
             const lapExp = document.getElementById('lap-tot-pengeluaran');
@@ -1249,15 +1403,6 @@
         }
 
         updateDashboardKeuangan();
-        
-        if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker berhasil didaftarkan!', reg))
-            .catch(err => console.log('Service Worker gagal: ', err));
-       });
-      }
-
     </script>
 </body>
 </html>
