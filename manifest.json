@@ -2,10 +2,13 @@
   "name": "Queen Laundry Kasir Pro",
   "short_name": "Queen Laundry",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#db2777",
   "theme_color": "#db2777",
   "description": "Aplikasi Kasir dan Manajemen Queen Laundry",
+  "orientation": "portrait",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
     {
       "src": "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/shirt.svg",
