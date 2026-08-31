@@ -70,10 +70,16 @@
         <div class="splash-loading-text">MEMUAT SISTEM KASIR...</div>
     </div>
 
+    <!-- HAMBURGER & TOP NAVIGATION BAR -->
     <header class="bg-pink-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
-        <div>
-            <h1 class="font-bold text-lg"><i class="fa-solid fa-shirt mr-2"></i> <span id="header-store-name">Queen Laundry</span></h1>
-            <p class="text-xs text-pink-100" id="current-date-header">Senin, 1 September 2026</p>
+        <div class="flex items-center space-x-3">
+            <button onclick="toggleSidebar()" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-sm transition shadow" title="Menu Utama">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div>
+                <h1 class="font-bold text-lg"><i class="fa-solid fa-shirt mr-2"></i> <span id="header-store-name">Queen Laundry</span></h1>
+                <p class="text-xs text-pink-100" id="current-date-header">Senin, 1 September 2026</p>
+            </div>
         </div>
         <div class="flex items-center space-x-2">
             <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner">
@@ -84,6 +90,64 @@
             </button>
         </div>
     </header>
+
+    <!-- SIDEBAR / DRAWER MENU -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
+    <div id="sidebar-drawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform -translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="bg-pink-600 text-white p-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <img id="sidebar-logo-img" src="logo-queen.png" alt="Logo" class="w-10 h-10 object-contain rounded-full bg-white p-0.5">
+                <div>
+                    <h2 class="font-bold text-sm" id="sidebar-store-title">Queen Laundry</h2>
+                    <p class="text-[10px] text-pink-100">Kasir Pro Ultimate v2</p>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="text-white hover:text-pink-200 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4 space-y-1 text-sm">
+            <button onclick="sidebarNavigate('view-dashboard')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-house w-5 text-pink-600"></i> <span>Dashboard Utama</span>
+            </button>
+            <button onclick="sidebarNavigate('view-transaksi')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-cash-register w-5 text-pink-600"></i> <span>Kasir / Transaksi Baru</span>
+            </button>
+            <button onclick="sidebarNavigate('view-order')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-list-check w-5 text-pink-600"></i> <span>Daftar Order & Nota</span>
+            </button>
+            <button onclick="sidebarNavigate('view-pelanggan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-users w-5 text-pink-600"></i> <span>Manajemen Member & Kuota</span>
+            </button>
+            <button onclick="sidebarNavigate('view-layanan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-tags w-5 text-pink-600"></i> <span>Katalog & Harga Layanan</span>
+            </button>
+            <button onclick="sidebarNavigate('view-keuangan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-wallet w-5 text-pink-600"></i> <span>Keuangan & Pengeluaran</span>
+            </button>
+            <button onclick="sidebarNavigate('view-pengaturan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
+                <i class="fa-solid fa-gear w-5 text-pink-600"></i> <span>Pengaturan Toko & Logo</span>
+            </button>
+        </div>
+
+        <div class="p-4 border-t border-gray-100 text-center text-xs text-gray-400">
+            Queen Laundry System &copy; 2026
+        </div>
+    </div>
+
+    <!-- AUDIO BACKSOUND & BACKGROUND AUDIO SYSTEM -->
+    <div class="fixed top-16 right-4 z-40">
+        <button id="audio-toggle-btn" onclick="toggleBackgroundAudio()" class="bg-white/90 backdrop-blur-sm border border-pink-200 text-pink-600 hover:bg-pink-50 px-3 py-1.5 rounded-full shadow-md text-xs font-bold flex items-center space-x-1.5 transition">
+            <i id="audio-icon" class="fa-solid fa-volume-xmark"></i>
+            <span id="audio-label">Musik: Off</span>
+        </button>
+        <!-- Audio element menggunakan file online bebas hak cipta / lo-fi relaxing streaming -->
+        <audio id="bg-audio" loop preload="auto">
+            <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
 
     <main class="max-w-md mx-auto p-4">
 
@@ -96,6 +160,33 @@
                     <div><span class="font-bold text-sm" id="dash-total-order">0</span><br>Total Order</div>
                     <div><span class="font-bold text-sm" id="dash-total-pengeluaran">Rp 0</span><br>Pengeluaran</div>
                     <div><span class="font-bold text-sm" id="dash-total-member">0</span><br>Member Aktif</div>
+                </div>
+            </div>
+
+            <!-- CUSTOM PRICING CALCULATOR WIDGET (FITUR BARU) -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <h3 class="font-bold text-gray-800 text-sm flex items-center"><i class="fa-solid fa-calculator text-pink-600 mr-2"></i> Kalkulator Estimasi & Pembulatan</h3>
+                    <span class="text-[10px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full">Otomatis</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[11px] text-gray-500 font-medium">Estimasi Berat / Jumlah</label>
+                        <input type="number" step="0.1" id="calc-estimasi-qty" value="1" min="0.1" oninput="hitungKalkulatorCepat()" class="w-full mt-1 p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-gray-500 font-medium">Pilih Layanan</label>
+                        <select id="calc-estimasi-layanan" onchange="hitungKalkulatorCepat()" class="w-full mt-1 p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600"></select>
+                    </div>
+                </div>
+                <div class="bg-pink-50/70 p-2.5 rounded-xl flex justify-between items-center text-xs">
+                    <div>
+                        <span class="text-gray-500 block text-[10px]">Hasil Pembulatan Terdekat (500)</span>
+                        <span id="calc-hasil-rounded" class="font-bold text-pink-700 text-sm">Rp0</span>
+                    </div>
+                    <button onclick="masukkanHasilKalkulatorKeKasir()" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition">
+                        <i class="fa-solid fa-arrow-right mr-1"></i> Masukkan Kasir
+                    </button>
                 </div>
             </div>
 
@@ -137,6 +228,22 @@
                         <span class="font-bold bg-emerald-200 px-2 py-0.5 rounded-full text-xs" id="count-selesai">0</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- FEEDBACK / ULASAN PELANGGAN LANGSUNG (FITUR BARU) -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 space-y-3">
+                <div class="flex items-center justify-between border-b pb-2">
+                    <h3 class="font-bold text-gray-800 text-sm flex items-center"><i class="fa-solid fa-comment-dots text-pink-600 mr-2"></i> Kotak Ulasan Pelanggan</h3>
+                    <span id="badge-total-feedback" class="text-[10px] bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded-full">0 Ulasan</span>
+                </div>
+                <div class="space-y-2">
+                    <input type="text" id="input-feedback-nama" placeholder="Nama Pelanggan / Pemberi Ulasan" class="w-full p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
+                    <textarea id="input-feedback-pesan" rows="2" placeholder="Tuliskan masukan atau ulasan layanan..." class="w-full p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600"></textarea>
+                    <button onclick="kirimFeedbackPelanggan()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded-xl text-xs shadow-xs transition">
+                        Kirim Ulasan Pelanggan
+                    </button>
+                </div>
+                <div id="list-feedback-container" class="max-h-36 overflow-y-auto space-y-2 pt-1"></div>
             </div>
         </section>
 
@@ -488,6 +595,7 @@
 
     </main>
 
+    <!-- BOTTOM NAVIGATION BAR -->
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around p-3 text-gray-500 text-xs shadow-lg z-40">
         <button onclick="switchView('view-dashboard')" class="flex flex-col items-center hover:text-pink-600 transition">
             <i class="fa-solid fa-house text-lg"></i>
@@ -533,6 +641,8 @@
         function applySettingsToUI() {
             document.getElementById('header-store-name').innerText = appSettings.storeName;
             document.getElementById('splash-logo-display').src = appSettings.logoUrl;
+            document.getElementById('sidebar-store-title').innerText = appSettings.storeName;
+            document.getElementById('sidebar-logo-img').src = appSettings.logoUrl;
             
             // Isi form pengaturan jika dibuka
             document.getElementById('setting-store-name').value = appSettings.storeName;
@@ -565,6 +675,45 @@
             }
         }
 
+        // HAMBURGER SIDEBAR TOGGLE
+        function toggleSidebar() {
+            const drawer = document.getElementById('sidebar-drawer');
+            const overlay = document.getElementById('sidebar-overlay');
+            if(drawer && overlay) {
+                drawer.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        function sidebarNavigate(viewId) {
+            toggleSidebar();
+            switchView(viewId);
+        }
+
+        // BACKGROUND AUDIO CONTROLLER
+        let isAudioPlaying = false;
+        function toggleBackgroundAudio() {
+            const audioEl = document.getElementById('bg-audio');
+            const audioIcon = document.getElementById('audio-icon');
+            const audioLabel = document.getElementById('audio-label');
+            if(!audioEl) return;
+
+            if(isAudioPlaying) {
+                audioEl.pause();
+                isAudioPlaying = false;
+                audioIcon.className = "fa-solid fa-volume-xmark";
+                audioLabel.innerText = "Musik: Off";
+            } else {
+                audioEl.play().then(() => {
+                    isAudioPlaying = true;
+                    audioIcon.className = "fa-solid fa-volume-high";
+                    audioLabel.innerText = "Musik: On";
+                }).catch(err => {
+                    alert('Gagal memutar audio otomatis. Interaksi browser diperlukan.');
+                });
+            }
+        }
+
         let dataPelanggan = JSON.parse(localStorage.getItem('ql_pelanggan')) || [
             { nama: 'Ahmad', telepon: '08123456789', saldo: 150000 }
         ];
@@ -586,6 +735,7 @@
         
         let dataOrder = JSON.parse(localStorage.getItem('ql_order')) || [];
         let dataPengeluaran = JSON.parse(localStorage.getItem('ql_expense')) || [];
+        let dataFeedback = JSON.parse(localStorage.getItem('ql_feedback')) || [];
         let keranjangTransaksi = []; 
         
         let selectedTipePelanggan = 'member';
@@ -607,7 +757,103 @@
             if(viewId === 'view-pelanggan') renderDaftarPelanggan();
             if(viewId === 'view-layanan') renderDaftarLayanan();
             if(viewId === 'view-keuangan') { updateDashboardKeuangan(); renderChartAnalitik(); }
-            if(viewId === 'view-dashboard') updateDashboardKeuangan();
+            if(viewId === 'view-dashboard') { updateDashboardKeuangan(); initKalkulatorDropdown(); renderListFeedback(); }
+        }
+
+        // CUSTOM PRICING CALCULATOR LOGIC
+        function initKalkulatorDropdown() {
+            const selectCalc = document.getElementById('calc-estimasi-layanan');
+            if(!selectCalc) return;
+            selectCalc.innerHTML = '';
+            dataLayanan.forEach(l => {
+                selectCalc.innerHTML += `<option value="${l.harga}">${l.nama} (Rp${l.harga})</option>`;
+            });
+            hitungKalkulatorCepat();
+        }
+
+        function hitungKalkulatorCepat() {
+            const qtyInput = document.getElementById('calc-estimasi-qty');
+            const selectCalc = document.getElementById('calc-estimasi-layanan');
+            const hasilRoundedEl = document.getElementById('calc-hasil-rounded');
+            if(!qtyInput || !selectCalc || !hasilRoundedEl) return;
+
+            let qty = parseFloat(qtyInput.value) || 0;
+            let hargaSatuan = parseFloat(selectCalc.value) || 0;
+            let rawTotal = qty * hargaSatuan;
+
+            // Logika Pembulatan Terdekat ke 500
+            let roundedTotal = Math.round(rawTotal / 500) * 500;
+            hasilRoundedEl.innerText = 'Rp' + roundedTotal.toLocaleString('id-ID');
+        }
+
+        function masukkanHasilKalkulatorKeKasir() {
+            const qtyInput = document.getElementById('calc-estimasi-qty');
+            const selectCalc = document.getElementById('calc-estimasi-layanan');
+            if(!qtyInput || !selectCalc) return;
+
+            let qty = parseFloat(qtyInput.value) || 1;
+            let selectedPrice = parseFloat(selectCalc.value) || 0;
+            let selectedNameText = selectCalc.options[selectCalc.selectedIndex].text.split(' (Rp')[0];
+
+            let existing = keranjangTransaksi.find(item => item.nama === selectedNameText && item.satuan === 'Kg');
+            if(existing) {
+                existing.qty += qty;
+            } else {
+                keranjangTransaksi.push({
+                    nama: selectedNameText,
+                    harga: selectedPrice,
+                    qty: qty,
+                    satuan: 'Kg'
+                });
+            }
+            switchView('view-transaksi');
+        }
+
+        // FEEDBACK / ULASAN PELANGGAN SYSTEM
+        function kirimFeedbackPelanggan() {
+            const namaEl = document.getElementById('input-feedback-nama');
+            const pesanEl = document.getElementById('input-feedback-pesan');
+            const nama = namaEl ? namaEl.value.trim() : '';
+            const pesan = pesanEl ? pesanEl.value.trim() : '';
+
+            if(!nama || !pesan) {
+                alert('Nama dan isi ulasan wajib diisi!');
+                return;
+            }
+
+            dataFeedback.unshift({ nama, pesan, tanggal: todayString });
+            localStorage.setItem('ql_feedback', JSON.stringify(dataFeedback));
+
+            if(namaEl) namaEl.value = '';
+            if(pesanEl) pesanEl.value = '';
+            alert('Ulasan pelanggan berhasil disimpan!');
+            renderListFeedback();
+        }
+
+        function renderListFeedback() {
+            const container = document.getElementById('list-feedback-container');
+            const badge = document.getElementById('badge-total-feedback');
+            if(!container) return;
+
+            if(badge) badge.innerText = dataFeedback.length + ' Ulasan';
+            container.innerHTML = '';
+
+            if(dataFeedback.length === 0) {
+                container.innerHTML = '<div class="text-center p-2 text-xs text-gray-400">Belum ada ulasan pelanggan</div>';
+                return;
+            }
+
+            dataFeedback.forEach(f => {
+                container.innerHTML += `
+                    <div class="p-2.5 bg-pink-50/50 rounded-xl border border-pink-100 text-xs space-y-1">
+                        <div class="flex justify-between font-bold text-gray-800">
+                            <span><i class="fa-solid fa-user-circle text-pink-600 mr-1"></i> ${f.nama}</span>
+                            <span class="text-[10px] text-gray-400 font-normal">${f.tanggal}</span>
+                        </div>
+                        <p class="text-gray-600 italic">"${f.pesan}"</p>
+                    </div>
+                `;
+            });
         }
 
         function setTipePelanggan(tipe) {
@@ -1403,6 +1649,8 @@
         }
 
         updateDashboardKeuangan();
+        initKalkulatorDropdown();
+        renderListFeedback();
     </script>
 </body>
 </html>
