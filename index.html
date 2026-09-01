@@ -1977,51 +1977,66 @@
                 commands.push(new Uint8Array([0x1B, 0x61, 0x00])); // Left align
 
                 let detailData = "";
-                detailData += twoColumns("No Nota", o.id) + "\n";
-                detailData += twoColumns("Tanggal", o.tanggal) + "\n";
+                                detailData += twoColumns("Tanggal", o.tanggal) + "\n";
                 detailData += twoColumns("Estimasi", o.estimasi) + "\n";
                 detailData += twoColumns("Pelanggan", o.nama) + "\n";
                 detailData += "--------------------------------\n";
+                detailData += "Rincian Layanan:\n";
                 
                 if (o.items && o.items.length > 0) {
                     o.items.forEach(i => {
-                        detailData += `${i.nama}\n`;
-                        detailData += twoColumns(`  ${i.qty} ${i.satuan} x ${i.harga}`, (i.harga * i.qty)) + "\n";
+                        let sub = i.harga * i.qty;
+                        detailData += `- ${i.nama} (${i.qty} ${i.satuan})\n`;
+                        detailData += twoColumns(`  Rp${i.harga.toLocaleString('id-ID')} x ${i.qty}`, `Rp${sub.toLocaleString('id-ID')}`) + "\n";
                     });
                 }
-                
+
                 if (o.diskon > 0) {
-                    detailData += twoColumns(`Diskon (${o.kodeVoucher})`, -o.diskon) + "\n";
+                    detailData += twoColumns(`Diskon (${o.kodeVoucher})`, `-Rp${Number(o.diskon).toLocaleString('id-ID')}`) + "\n";
                 }
-                
+
                 detailData += "--------------------------------\n";
-                detailData += twoColumns("TOTAL", o.total) + "\n";
-                detailData += twoColumns("DIBAYAR", o.bayar) + "\n";
+                detailData += twoColumns("Total Biaya", `Rp${Number(o.total).toLocaleString('id-ID')}`) + "\n";
+                detailData += twoColumns("Dibayar/DP", `Rp${Number(o.bayar).toLocaleString('id-ID')}`) + "\n";
+                
                 if (o.sisa > 0) {
-                    detailData += twoColumns("SISA KEKURANGAN", o.sisa) + "\n";
+                    detailData += twoColumns("Sisa Kekurangan", `Rp${Number(o.sisa).toLocaleString('id-ID')}`) + "\n";
                 }
-                detailData += twoColumns("METODE", o.metode) + "\n";
-                detailData += "--------------------------------\n";
                 
-                let statusText = o.statusBayar === 'LUNAS' ? "STATUS: LUNAS" : "STATUS: BELUM LUNAS";
-                detailData += statusText + "\n\n";
-                detailData += escPosText(appSettings.footerText) + "\n\n\n";
+                detailData += twoColumns("Metode Bayar", o.metode === 'Member' ? 'Potong Saldo' : o.metode) + "\n";
+                detailData += "--------------------------------\n";
 
                 commands.push(encoder.encode(detailData));
                 commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
+
+                let footerData = "";
+                footerData += (o.sisa > 0 ? "STATUS: BELUM LUNAS\n" : "STATUS: LUNAS\n");
+                if (o.catatan) {
+                    footerData += `Catatan: ${o.catatan}\n`;
+                }
+                footerData += "\n";
+                footerData += escPosText(appSettings.footerText) + "\n\n\n";
+
+                commands.push(encoder.encode(footerData));
                 commands.push(new Uint8Array([0x1D, 0x56, 0x41, 0x10])); // Cut paper
 
+                // Kirim perintah ke printer via Bluetooth (chunked agar stabil)
                 for (let cmd of commands) {
-                    if (btPrinterCharacteristic.properties.writeWithoutResponse) {
-                        await btPrinterCharacteristic.writeValueWithoutResponse(cmd);
-                    } else {
-                        await btPrinterCharacteristic.writeValue(cmd);
+                    let chunkSize = 512;
+                    for (let i = 0; i < cmd.length; i += chunkSize) {
+                        let chunk = cmd.slice(i, i + chunkSize);
+                        if (btPrinterCharacteristic.properties.writeWithoutResponse) {
+                            await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
+                        } else {
+                            await btPrinterCharacteristic.writeValue(chunk);
+                        }
                     }
                 }
-                alert('Nota berhasil dicetak via Bluetooth!');
+
+                alert('Nota berhasil dicetak via Printer Bluetooth!');
             } catch (error) {
-                console.error('Cetak Bluetooth:', error);
-                alert('Gagal mencetak via Bluetooth: ' + (error.message || error));
+                console.error('Gagal mencetak:', error);
+                alert('Gagal mencetak nota via Bluetooth: ' + (error.message || error));
             }
         }
     </script>
