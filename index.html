@@ -283,7 +283,6 @@
                                 </div>
                             </label>
                         </div>
-                        <!-- Elemen select tersembunyi agar logika Javascript lama tetap aman -->
                         <select id="service-duration" class="hidden">
                             <option value="1">Express (1 Hari)</option>
                             <option value="3" selected>Standar (3 Hari)</option>
@@ -720,7 +719,6 @@
                 hitungEstimasiSelesai();
             }
             
-            // Sinkronisasi status radio button default awal
             const defaultRadio = document.querySelector('input[name="service-duration-radio"][value="3"]');
             if(defaultRadio) defaultRadio.checked = true;
 
@@ -1966,7 +1964,6 @@
                 let encoder = new TextEncoder();
                 let commands = [];
 
-                // ESC/POS Commands Init
                 commands.push(new Uint8Array([0x1B, 0x40])); // Initialize printer
                 commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
 
@@ -1985,54 +1982,45 @@
                 detailData += twoColumns("Estimasi", o.estimasi) + "\n";
                 detailData += twoColumns("Pelanggan", o.nama) + "\n";
                 detailData += "--------------------------------\n";
-                detailData += "Rincian Layanan:\n";
-
+                
                 if (o.items && o.items.length > 0) {
                     o.items.forEach(i => {
-                        let sub = i.harga * i.qty;
-                        detailData += `- ${i.nama} (${i.qty} ${i.satuan})\n`;
-                        detailData += twoColumns("  Rp" + i.harga.toLocaleString('id-ID') + " x " + i.qty, "Rp" + sub.toLocaleString('id-ID')) + "\n";
+                        detailData += `${i.nama}\n`;
+                        detailData += twoColumns(`  ${i.qty} ${i.satuan} x ${i.harga}`, (i.harga * i.qty)) + "\n";
                     });
                 }
-
+                
                 if (o.diskon > 0) {
-                    detailData += twoColumns("Diskon (" + o.kodeVoucher + ")", "-Rp" + Number(o.diskon).toLocaleString('id-ID')) + "\n";
+                    detailData += twoColumns(`Diskon (${o.kodeVoucher})`, -o.diskon) + "\n";
                 }
-
+                
                 detailData += "--------------------------------\n";
-                detailData += twoColumns("Total Biaya", "Rp" + Number(o.total).toLocaleString('id-ID')) + "\n";
-                detailData += twoColumns("Bayar / DP", "Rp" + Number(o.bayar).toLocaleString('id-ID')) + "\n";
+                detailData += twoColumns("TOTAL", o.total) + "\n";
+                detailData += twoColumns("DIBAYAR", o.bayar) + "\n";
                 if (o.sisa > 0) {
-                    detailData += twoColumns("Sisa Kekurangan", "Rp" + Number(o.sisa).toLocaleString('id-ID')) + "\n";
+                    detailData += twoColumns("SISA KEKURANGAN", o.sisa) + "\n";
                 }
-                detailData += twoColumns("Metode Bayar", o.metode === 'Member' ? 'Potong Saldo' : o.metode) + "\n";
+                detailData += twoColumns("METODE", o.metode) + "\n";
                 detailData += "--------------------------------\n";
+                
+                let statusText = o.statusBayar === 'LUNAS' ? "STATUS: LUNAS" : "STATUS: BELUM LUNAS";
+                detailData += statusText + "\n\n";
+                detailData += escPosText(appSettings.footerText) + "\n\n\n";
 
                 commands.push(encoder.encode(detailData));
                 commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
-
-                let footerData = "";
-                footerData += (o.sisa > 0 ? "STATUS: BELUM LUNAS\n" : "STATUS: LUNAS\n");
-                footerData += "\n" + escPosText(appSettings.footerText) + "\n\n\n";
-
-                commands.push(encoder.encode(footerData));
                 commands.push(new Uint8Array([0x1D, 0x56, 0x41, 0x10])); // Cut paper
 
-                // Send chunks to BLE characteristic
                 for (let cmd of commands) {
-                    const chunkSize = 512;
-                    for (let i = 0; i < cmd.length; i += chunkSize) {
-                        let chunk = cmd.slice(i, i + chunkSize);
-                        if (btPrinterCharacteristic.properties.writeWithoutResponse) {
-                            await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
-                        } else {
-                            await btPrinterCharacteristic.writeValue(chunk);
-                        }
+                    if (btPrinterCharacteristic.properties.writeWithoutResponse) {
+                        await btPrinterCharacteristic.writeValueWithoutResponse(cmd);
+                    } else {
+                        await btPrinterCharacteristic.writeValue(cmd);
                     }
                 }
-                alert('Nota berhasil dicetak melalui Printer Bluetooth!');
+                alert('Nota berhasil dicetak via Bluetooth!');
             } catch (error) {
-                console.error('Cetak Bluetooth Error:', error);
+                console.error('Cetak Bluetooth:', error);
                 alert('Gagal mencetak via Bluetooth: ' + (error.message || error));
             }
         }
