@@ -111,6 +111,10 @@
           background: #fdf2f4;
           box-shadow: 0 3px 6px rgba(219, 39, 119, 0.12);
       }
+
+      /* Bluetooth Thermal Printer */
+      .bt-printer-status { font-size: 11px; color: #6b7280; text-align:center; margin-top:4px; }
+      .bt-connected { color:#059669; font-weight:700; }
     </style>
 </head>
 
@@ -118,7 +122,7 @@
 
     <div id="splash-screen">
         <img id="splash-logo-display" src="logo-queen.png" alt="Queen Laundry Logo" class="splash-logo-img">
-        <div class="splash-loading-text">This Application Was Created By <b>Ashraf NR</b></div>
+        <div class="splash-loading-text">This Application Was Created By <b>rAshraf NR.</b></div>
     </div>
 
     <header class="bg-pink-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
@@ -602,13 +606,20 @@
             
             <div class="space-y-2">
                 <div class="flex space-x-2">
+                    <button onclick="cetakNotaBluetooth()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
+                        <i class="fa-brands fa-bluetooth-b mr-1"></i> PRINT BLUETOOTH
+                    </button>
                     <button onclick="window.print()" class="w-1/2 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
-                        <i class="fa-solid fa-print mr-1"></i> CETAK NOTA
+                        <i class="fa-solid fa-print mr-1"></i> CETAK BIASA
                     </button>
                     <button onclick="kirimNotaWAAktif()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
                         <i class="fa-brands fa-whatsapp mr-1"></i> KIRIM WA
                     </button>
                 </div>
+                <div id="bt-printer-status" class="bt-printer-status">Printer Bluetooth: belum terhubung</div>
+                <button onclick="hubungkanPrinterBluetooth()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm">
+                    <i class="fa-brands fa-bluetooth-b mr-1"></i> HUBUNGKAN PRINTER BLUETOOTH
+                </button>
                 <button onclick="switchView('view-dashboard')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
                     SELESAI
                 </button>
@@ -1834,6 +1845,193 @@
 
             switchView('view-laporan-cetak');
         }
+
+        // ============================================================
+        // BLUETOOTH THERMAL PRINTER (ESC/POS - Web Bluetooth)
+        // ============================================================
+        let btPrinterDevice = null;
+        let btPrinterCharacteristic = null;
+
+        const BT_SERVICE_UUIDS = [
+            '0000ff00-0000-1000-8000-00805f9b34fb',
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+        ];
+        const BT_CHARACTERISTIC_UUIDS = [
+            '0000ff01-0000-1000-8000-00805f9b34fb',
+            '0000ffe1-0000-1000-8000-00805f9b34fb',
+            '49535343-8841-43f4-a8d4-ecbe34729bb3'
+        ];
+
+        function updateBluetoothStatus(text, connected = false) {
+            const el = document.getElementById('bt-printer-status');
+            if (!el) return;
+            el.textContent = 'Printer Bluetooth: ' + text;
+            el.classList.toggle('bt-connected', connected);
+        }
+
+        async function findWritableCharacteristic(server) {
+            // Try known printer services/characteristics first.
+            for (const serviceUuid of BT_SERVICE_UUIDS) {
+                try {
+                    const service = await server.getPrimaryService(serviceUuid);
+                    for (const charUuid of BT_CHARACTERISTIC_UUIDS) {
+                        try {
+                            const ch = await service.getCharacteristic(charUuid);
+                            if (ch.properties.write || ch.properties.writeWithoutResponse) return ch;
+                        } catch (_) {}
+                    }
+                    const chars = await service.getCharacteristics();
+                    const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+                    if (writable) return writable;
+                } catch (_) {}
+            }
+
+            // Fallback: inspect all exposed primary services.
+            try {
+                const services = await server.getPrimaryServices();
+                for (const service of services) {
+                    try {
+                        const chars = await service.getCharacteristics();
+                        const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+                        if (writable) return writable;
+                    } catch (_) {}
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        async function hubungkanPrinterBluetooth() {
+            if (!navigator.bluetooth) {
+                alert('Browser ini belum mendukung Web Bluetooth. Gunakan Google Chrome di Android dan buka website melalui HTTPS.');
+                return;
+            }
+            try {
+                updateBluetoothStatus('mencari perangkat...');
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: BT_SERVICE_UUIDS
+                });
+                btPrinterDevice = device;
+                device.addEventListener('gattserverdisconnected', () => {
+                    btPrinterCharacteristic = null;
+                    updateBluetoothStatus('terputus');
+                });
+
+                updateBluetoothStatus('menghubungkan ke ' + (device.name || 'printer') + '...');
+                const server = await device.gatt.connect();
+                btPrinterCharacteristic = await findWritableCharacteristic(server);
+                if (!btPrinterCharacteristic) throw new Error('Karakteristik printer untuk menulis data tidak ditemukan.');
+
+                updateBluetoothStatus((device.name || 'Printer') + ' terhubung', true);
+                alert('Printer Bluetooth berhasil terhubung.');
+            } catch (error) {
+                console.error('Bluetooth Printer:', error);
+                btPrinterCharacteristic = null;
+                updateBluetoothStatus('belum terhubung');
+                if (error && error.name !== 'NotFoundError') {
+                    alert('Gagal menghubungkan printer Bluetooth: ' + (error.message || error));
+                }
+            }
+        }
+
+        function escPosText(value) {
+            return String(value ?? '').replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '');
+        }
+
+        function centerLine(text, width = 32) {
+            text = escPosText(text);
+            if (text.length >= width) return text.substring(0, width);
+            const left = Math.floor((width - text.length) / 2);
+            return ' '.repeat(left) + text;
+        }
+
+        function twoColumns(left, right, width = 32) {
+            left = escPosText(left);
+            right = escPosText(right);
+            if (right.length >= width) right = right.substring(0, width - 1);
+            const maxLeft = width - right.length - 1;
+            if (left.length > maxLeft) left = left.substring(0, maxLeft);
+            return left + ' '.repeat(Math.max(1, width - left.length - right.length)) + right;
+        }
+
+        function buildNotaEscPos() {
+            const o = lastCreatedOrder;
+            if (!o) throw new Error('Belum ada nota yang dapat dicetak.');
+
+            const width = 32; // 58mm thermal printer, font normal
+            const lines = [];
+            lines.push(centerLine(appSettings.storeName, width));
+            lines.push(centerLine('Premium Care Service', width));
+            lines.push(centerLine(appSettings.storeAddress, width));
+            lines.push('--------------------------------');
+            lines.push(twoColumns('No Nota', o.id, width));
+            lines.push(twoColumns('Tanggal', o.tanggal, width));
+            lines.push(twoColumns('Pelanggan', o.nama, width));
+            lines.push('--------------------------------');
+
+            (o.items || []).forEach(item => {
+                const qty = item.qty + ' ' + item.satuan;
+                const sub = 'Rp' + (Number(item.harga || 0) * Number(item.qty || 0)).toLocaleString('id-ID');
+                lines.push(escPosText(item.nama));
+                lines.push(twoColumns('  ' + qty, sub, width));
+            });
+
+            if (Number(o.diskon || 0) > 0) {
+                lines.push(twoColumns('Diskon ' + (o.kodeVoucher || ''), '-Rp' + Math.round(o.diskon).toLocaleString('id-ID'), width));
+            }
+            lines.push('--------------------------------');
+            lines.push(twoColumns('TOTAL', 'Rp' + Number(o.total || 0).toLocaleString('id-ID'), width));
+            lines.push(twoColumns('DIBAYAR / DP', 'Rp' + Number(o.bayar || 0).toLocaleString('id-ID'), width));
+            if (Number(o.sisa || 0) > 0) {
+                lines.push(twoColumns('SISA', 'Rp' + Number(o.sisa).toLocaleString('id-ID'), width));
+            }
+            lines.push(twoColumns('Metode', o.metode === 'Member' ? 'Potong Saldo Member' : (o.metode || 'Cash'), width));
+            lines.push(centerLine(o.statusBayar === 'BELUM LUNAS' ? 'STATUS: BELUM LUNAS' : 'STATUS: LUNAS', width));
+            lines.push('');
+            lines.push(centerLine('Terima kasih telah mempercayakan', width));
+            lines.push(centerLine('cucian Anda di Queen Laundry', width));
+            lines.push('');
+            lines.push('');
+            return lines.join('\n');
+        }
+
+        async function writeBluetoothData(data) {
+            if (!btPrinterCharacteristic) throw new Error('Printer Bluetooth belum terhubung.');
+            const encoder = new TextEncoder();
+            const bytes = data instanceof Uint8Array ? data : encoder.encode(String(data));
+            const chunkSize = 180;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.slice(i, i + chunkSize);
+                if (btPrinterCharacteristic.properties.writeWithoutResponse && btPrinterCharacteristic.writeValueWithoutResponse) {
+                    await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
+                } else {
+                    await btPrinterCharacteristic.writeValue(chunk);
+                }
+                await new Promise(resolve => setTimeout(resolve, 20));
+            }
+        }
+
+        async function cetakNotaBluetooth() {
+            try {
+                if (!btPrinterCharacteristic) {
+                    await hubungkanPrinterBluetooth();
+                    if (!btPrinterCharacteristic) return;
+                }
+                // ESC/POS: initialize, center header, normal text, cut (if supported).
+                const header = new Uint8Array([0x1B,0x40,0x1B,0x61,0x01,0x1B,0x21,0x00]);
+                const encoder = new TextEncoder();
+                await writeBluetoothData(header);
+                await writeBluetoothData(encoder.encode(buildNotaEscPos()));
+                await writeBluetoothData(new Uint8Array([0x1D,0x56,0x00]));
+                updateBluetoothStatus((btPrinterDevice && btPrinterDevice.name) || 'Printer', true);
+                alert('Nota berhasil dikirim ke printer Bluetooth.');
+            } catch (error) {
+                console.error('Cetak Bluetooth:', error);
+                alert('Gagal mencetak via Bluetooth: ' + (error.message || error));
+            }
+        }
+
     </script>
 </body>
 </html>
