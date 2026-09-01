@@ -67,7 +67,6 @@
           100% { transform: scale(1.08); }
       }
 
-      /* Desain Kartu Durasi Pengerjaan Modern & Estetik */
       .duration-options-grid {
           display: flex;
           flex-direction: column;
@@ -105,14 +104,12 @@
           color: #6b7280;
           margin-top: 1px;
       }
-      /* State saat dipilih */
       .duration-card-label:has(input[type="radio"]:checked) {
           border-color: #db2777;
           background: #fdf2f4;
           box-shadow: 0 3px 6px rgba(219, 39, 119, 0.12);
       }
 
-      /* Bluetooth Thermal Printer */
       .bt-printer-status { font-size: 11px; color: #6b7280; text-align:center; margin-top:4px; }
       .bt-connected { color:#059669; font-weight:700; }
     </style>
@@ -248,7 +245,10 @@
 
         <section id="view-transaksi" class="view-section hidden space-y-4">
             <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-                <h3 class="font-bold text-gray-800 border-b pb-2">Buat Transaksi Baru</h3>
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-bold text-gray-800" id="form-transaksi-title">Buat Transaksi Baru</h3>
+                    <button type="button" id="btn-batal-revisi" onclick="batalRevisiOrder()" class="hidden text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2.5 py-1 rounded-lg font-bold">Batal Revisi</button>
+                </div>
                 
                 <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
                     <div>
@@ -418,7 +418,7 @@
                     <div class="flex justify-between font-bold text-pink-600 text-base pt-2 border-t border-pink-200"><span>TOTAL</span> <span id="lbl-total">Rp0</span></div>
                 </div>
 
-                <button onclick="prosesPembayaran()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
+                <button id="btn-proses-transaksi" onclick="prosesPembayaran()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
                     PROSES & CETAK NOTA
                 </button>
             </div>
@@ -551,6 +551,14 @@
                         <textarea id="setting-footer-text" rows="3" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600" placeholder="Terima kasih telah mempercayakan cucian Anda..."></textarea>
                     </div>
 
+                    <div class="pt-2 border-t space-y-2">
+                        <label class="font-medium text-gray-600 block">Zona Reset Data Toko</label>
+                        <button onclick="masterResetAplikasi()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl shadow transition text-xs flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> RESET APLIKASI (HAPUS SEMUA DATA & KEMBALI KE AWAL)
+                        </button>
+                        <p class="text-[10px] text-gray-400">Tombol ini akan membersihkan seluruh database Supabase (order, member, layanan, pengeluaran, pengaturan) kembali ke setelan pabrik.</p>
+                    </div>
+
                     <button onclick="simpanPengaturan()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-xs">
                         SIMPAN PENGATURAN TOKO
                     </button>
@@ -672,7 +680,6 @@
     </nav>
 
     <script>
-        // INISIALISASI SUPABASE AMAN
         const SUPABASE_URL = 'https://uxutxeclfcvcvdiydmpw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_UMV1G-z6vj5x0sRKlvZfVA_ap4qZFkA';
         
@@ -697,6 +704,11 @@
         let lastCreatedOrder = null;
         let chartInstance = null;
         let selectedKatalogItem = null;
+        let isRevisingOrderId = null;
+
+        // Variabel Bluetooth Printer (Web Bluetooth API)
+        let bluetoothDevice = null;
+        let bluetoothCharacteristic = null;
 
         let appSettings = {
             storeName: 'Queen Laundry',
@@ -798,6 +810,136 @@
             }
         }
 
+        // ==========================================
+        // FUNGSI KONEKSI & CETAK BLUETOOTH THERMAL
+        // ==========================================
+        async function hubungkanPrinterBluetooth() {
+            const statusEl = document.getElementById('bt-printer-status');
+            if (!navigator.bluetooth) {
+                alert('Browser Anda atau perangkat ini tidak mendukung Web Bluetooth API. Gunakan Chrome di Android/PC.');
+                return;
+            }
+
+            try {
+                if (statusEl) statusEl.innerText = 'Mencari printer Bluetooth...';
+                
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2']
+                });
+
+                const server = await bluetoothDevice.gatt.connect();
+                
+                // Cek service umum ESC/POS Printer
+                let service;
+                try {
+                    service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                } catch(e) {
+                    try {
+                        service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+                    } catch(err) {
+                        service = await server.getPrimaryService(); 
+                    }
+                }
+
+                const characteristics = await service.getCharacteristics();
+                bluetoothCharacteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+
+                if (!bluetoothCharacteristic) {
+                    throw new Error('Karakteristik write Bluetooth tidak ditemukan pada printer ini.');
+                }
+
+                if (statusEl) {
+                    statusEl.innerHTML = `<span class="bt-connected">Terhubung ke: ${bluetoothDevice.name || 'Printer Bluetooth'}</span>`;
+                }
+                alert(`Berhasil terhubung ke printer: ${bluetoothDevice.name || 'Thermal Printer'}`);
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', () => {
+                    if (statusEl) statusEl.innerText = 'Printer Bluetooth terputus.';
+                    bluetoothCharacteristic = null;
+                });
+
+            } catch (error) {
+                console.error('Gagal koneksi Bluetooth:', error);
+                if (statusEl) statusEl.innerText = 'Printer Bluetooth: gagal terhubung';
+                alert('Gagal menghubungkan printer Bluetooth: ' + error.message);
+            }
+        }
+
+        async function cetakNotaBluetooth() {
+            if (!bluetoothCharacteristic || !bluetoothDevice) {
+                alert('Printer Bluetooth belum terhubung! Silakan klik tombol "HUBUNGKAN PRINTER BLUETOOTH" terlebih dahulu.');
+                return;
+            }
+
+            if (!lastCreatedOrder) {
+                alert('Tidak ada data nota aktif untuk dicetak.');
+                return;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                let commands = [];
+
+                // Perintah ESC/POS Inisialisasi
+                commands.push(new Uint8Array([0x1B, 0x40])); // ESC @ (Init)
+                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
+
+                let textToPrint = "";
+                textToPrint += `${appSettings.storeName.toUpperCase()}\n`;
+                textToPrint += `Premium Care Service\n`;
+                textToPrint += `${appSettings.storeAddress}\n`;
+                textToPrint += `--------------------------------\n`;
+                textToPrint += `No Nota  : ${lastCreatedOrder.id}\n`;
+                textToPrint += `Tanggal  : ${lastCreatedOrder.tanggal}\n`;
+                textToPrint += `Estimasi : ${lastCreatedOrder.estimasi}\n`;
+                textToPrint += `Pelanggan: ${lastCreatedOrder.nama}\n`;
+                textToPrint += `--------------------------------\n`;
+                textToPrint += `RINCIAN LAYANAN:\n`;
+
+                lastCreatedOrder.items.forEach(item => {
+                    let sub = item.harga * item.qty;
+                    textToPrint += `- ${item.nama}\n`;
+                    textToPrint += `  ${item.qty} ${item.satuan} x ${item.harga.toLocaleString('id-ID')} = Rp${sub.toLocaleString('id-ID')}\n`;
+                });
+
+                if (lastCreatedOrder.diskon > 0) {
+                    textToPrint += `Diskon   : -Rp${Math.round(lastCreatedOrder.diskon).toLocaleString('id-ID')}\n`;
+                }
+
+                if (lastCreatedOrder.catatan) {
+                    textToPrint += `Catatan  : ${lastCreatedOrder.catatan}\n`;
+                }
+
+                textToPrint += `--------------------------------\n`;
+                textToPrint += `TOTAL    : Rp${Number(lastCreatedOrder.total).toLocaleString('id-ID')}\n`;
+                textToPrint += `Bayar    : Rp${Number(lastCreatedOrder.bayar).toLocaleString('id-ID')}\n`;
+                textToPrint += `Sisa     : Rp${Number(lastCreatedOrder.sisa).toLocaleString('id-ID')}\n`;
+                textToPrint += `Metode   : ${lastCreatedOrder.metode}\n`;
+                textToPrint += `STATUS   : ${lastCreatedOrder.statusBayar}\n`;
+                textToPrint += `--------------------------------\n`;
+                textToPrint += `${appSettings.footerText}\n\n\n`;
+
+                commands.push(encoder.encode(textToPrint));
+                // Perintah potong kertas / feed
+                commands.push(new Uint8Array([0x1D, 0x56, 0x41, 0x10])); 
+
+                // Kirim data ke printer via BLE (chunking jika data besar)
+                for (let cmd of commands) {
+                    const chunkSize = 512;
+                    for (let i = 0; i < cmd.length; i += chunkSize) {
+                        let chunk = cmd.slice(i, i + chunkSize);
+                        await bluetoothCharacteristic.writeValue(chunk);
+                    }
+                }
+
+                alert('Nota berhasil dikirim ke printer thermal Bluetooth!');
+            } catch (err) {
+                console.error('Gagal mencetak via Bluetooth:', err);
+                alert('Gagal mencetak: ' + err.message);
+            }
+        }
+
         function onDurationChange(val) {
             const selectEl = document.getElementById('service-duration');
             if(selectEl) {
@@ -893,11 +1035,13 @@
                 renderDropdownPelanggan(); 
                 renderKatalogGrid(); 
                 renderKeranjang(); 
-                const inputTglOrder = document.getElementById('input-tanggal-order');
-                if(inputTglOrder && !inputTglOrder.value) {
-                    inputTglOrder.value = new Date().toISOString().split('T')[0];
+                if(!isRevisingOrderId) {
+                    const inputTglOrder = document.getElementById('input-tanggal-order');
+                    if(inputTglOrder && !inputTglOrder.value) {
+                        inputTglOrder.value = new Date().toISOString().split('T')[0];
+                    }
+                    hitungEstimasiSelesai(); 
                 }
-                hitungEstimasiSelesai(); 
             }
             if(viewId === 'view-order') renderDaftarOrder();
             if(viewId === 'view-pelanggan') renderDaftarPelanggan();
@@ -1380,6 +1524,112 @@
             }
         }
 
+        async function masterResetAplikasi() {
+            if (!supabaseClient) return;
+            let konfirmasi = prompt("MASTER RESET: Ketik 'RESET' untuk menghapus seluruh data tabel Cloud (order, pelanggan, layanan, pengeluaran, settings):");
+            if (konfirmasi === 'RESET') {
+                await supabaseClient.from('orders').delete().neq('id', 0);
+                await supabaseClient.from('pelanggan').delete().neq('id', 0);
+                await supabaseClient.from('layanan').delete().neq('id', 0);
+                await supabaseClient.from('pengeluaran').delete().neq('id', 0);
+                await supabaseClient.from('settings').delete().neq('id', 0);
+                
+                alert('Seluruh data aplikasi telah direset total. Aplikasi akan dimuat ulang.');
+                window.location.reload();
+            } else if (konfirmasi !== null) {
+                alert('Kata kunci salah! Reset dibatalkan.');
+            }
+        }
+
+        function revisiOrder(id) {
+            const order = dataOrder.find(o => o.id === id);
+            if (!order) {
+                alert('Data order tidak ditemukan!');
+                return;
+            }
+
+            isRevisingOrderId = order.id;
+            keranjangTransaksi = JSON.parse(JSON.stringify(order.items || []));
+            
+            if (order.nama.includes('(Umum)')) {
+                setTipePelanggan('umum');
+                let bersihNama = order.nama.replace(' (Umum)', '');
+                document.getElementById('input-nama-umum').value = bersihNama;
+                document.getElementById('input-wa-umum').value = order.telepon || '';
+            } else {
+                setTipePelanggan('member');
+                let selectPelanggan = document.getElementById('select-pelanggan');
+                if (selectPelanggan) {
+                    selectPelanggan.value = order.nama;
+                }
+            }
+
+            const catatanEl = document.getElementById('input-catatan');
+            if (catatanEl) catatanEl.value = order.catatan || '';
+
+            setPaymentMethod(order.metode || 'Cash');
+            if (order.sisa > 0 && order.bayar > 0) {
+                setPayStatus('DP');
+                const inputDp = document.getElementById('input-dp');
+                if (inputDp) inputDp.value = order.bayar;
+            } else if (order.bayar === 0) {
+                setPayStatus('Nanti');
+            } else {
+                setPayStatus('Lunas');
+            }
+
+            document.getElementById('form-transaksi-title').innerText = `Revisi Order: ${order.id}`;
+            document.getElementById('btn-batal-revisi').classList.remove('hidden');
+            document.getElementById('btn-proses-transaksi').innerText = 'SIMPAN PERUBAHAN REVISI';
+
+            switchView('view-transaksi');
+        }
+
+        function batalRevisiOrder() {
+            isRevisingOrderId = null;
+            keranjangTransaksi = [];
+            document.getElementById('form-transaksi-title').innerText = 'Buat Transaksi Baru';
+            document.getElementById('btn-batal-revisi').classList.add('hidden');
+            document.getElementById('btn-proses-transaksi').innerText = 'PROSES & CETAK NOTA';
+            
+            const catatanEl = document.getElementById('input-catatan');
+            if(catatanEl) catatanEl.value = '';
+            
+            switchView('view-order');
+        }
+
+        async function resetAtauHapusOrder(id) {
+            if (!supabaseClient) return;
+            const order = dataOrder.find(o => o.id === id);
+            if (!order) return;
+
+            let opsi = prompt(`Pilih Aksi untuk Pesanan ${order.id}:\n1. Ketik "RESET" untuk mengosongkan/mereset isi item pesanan ini.\n2. Ketik "HAPUS" untuk menghapus permanen pesanan ini.`);
+            
+            if (opsi === 'RESET' || opsi === 'reset') {
+                order.items = [];
+                order.total = 0;
+                order.bayar = 0;
+                order.sisa = 0;
+                order.diskon = 0;
+                
+                await supabaseClient.from('orders').update({
+                    items: JSON.stringify([]),
+                    total: 0,
+                    bayar: 0,
+                    sisa: 0,
+                    diskon: 0
+                }).eq('invoice_id', id);
+
+                renderDaftarOrder();
+                alert(`Pesanan ${id} berhasil direset isinya menjadi kosong.`);
+            } else if (opsi === 'HAPUS' || opsi === 'hapus') {
+                await supabaseClient.from('orders').delete().eq('invoice_id', id);
+                dataOrder = dataOrder.filter(o => o.id !== id);
+                renderDaftarOrder();
+                alert(`Pesanan ${id} berhasil dihapus permanen.`);
+            }
+        }
+
         async function prosesPembayaran() {
             if (!supabaseClient) return;
             if(keranjangTransaksi.length === 0) {
@@ -1458,172 +1708,168 @@
                 sisa = total;
             }
 
-            const invoiceId = 'QL-' + Date.now().toString().slice(-6);
+            let invoiceId = '';
+            let statusCucianDefault = 'DIPROSES';
 
-            const newOrder = {
-                invoice_id: invoiceId,
-                nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
-                telepon: telepon,
-                items: JSON.stringify(keranjangTransaksi),
-                diskon: diskonFinal,
-                kode_voucher: kodeVoucherFinal,
-                total: total,
-                bayar: bayar,
-                sisa: sisa,
-                status_bayar: statusBayar,
-                status: 'DIPROSES',
-                metode: selectedPayment,
-                tanggal: tglOrderFormatted,
-                estimasi: estimasiSelesaiText,
-                catatan: catatan
-            };
+            if (isRevisingOrderId) {
+                invoiceId = isRevisingOrderId;
+                let existingOrder = dataOrder.find(o => o.id === invoiceId);
+                if (existingOrder) statusCucianDefault = existingOrder.status;
 
-            await supabaseClient.from('orders').insert([newOrder]);
+                await supabaseClient.from('orders').update({
+                    nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
+                    telepon: telepon,
+                    items: JSON.stringify(keranjangTransaksi),
+                    diskon: diskonFinal,
+                    kode_voucher: kodeVoucherFinal,
+                    total: total,
+                    bayar: bayar,
+                    sisa: sisa,
+                    status_bayar: statusBayar,
+                    metode: selectedPayment,
+                    tanggal: tglOrderFormatted,
+                    estimasi: estimasiSelesaiText,
+                    catatan: catatan
+                }).eq('invoice_id', invoiceId);
 
-            const localOrderObj = {
-                id: invoiceId,
-                nama: newOrder.nama,
-                telepon: telepon,
-                items: [...keranjangTransaksi],
-                diskon: diskonFinal,
-                kodeVoucher: kodeVoucherFinal,
-                total: total,
-                bayar: bayar,
-                sisa: sisa,
-                statusBayar: statusBayar,
-                status: 'DIPROSES',
-                metode: selectedPayment,
-                tanggal: tglOrderFormatted,
-                estimasi: estimasiSelesaiText,
-                catatan: catatan
-            };
-
-            lastCreatedOrder = localOrderObj;
-            dataOrder.unshift(localOrderObj);
-
-            document.getElementById('nota-store-name').innerText = appSettings.storeName;
-            document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
-            document.getElementById('nota-logo-img').src = appSettings.logoUrl;
-            document.getElementById('nota-footer-message').innerHTML = appSettings.footerText.replace(/\n/g, '<br>');
-
-            document.getElementById('nota-id').innerText = invoiceId;
-            document.getElementById('nota-tanggal').innerText = tglOrderFormatted;
-            document.getElementById('nota-estimasi-selesai').innerText = estimasiSelesaiText;
-            document.getElementById('nota-pelanggan').innerText = localOrderObj.nama;
-            
-            const notaItemsContainer = document.getElementById('nota-items-container');
-            notaItemsContainer.innerHTML = '';
-            keranjangTransaksi.forEach(item => {
-                let sub = item.harga * item.qty;
-                notaItemsContainer.innerHTML += `
-                    <div class="flex justify-between text-gray-600">
-                        <span>${item.nama} (${item.qty} ${item.satuan})</span>
-                        <span>Rp${sub.toLocaleString('id-ID')}</span>
-                    </div>`;
-            });
-
-            const notaDiskonWrap = document.getElementById('nota-diskon-wrapper');
-            if(diskonFinal > 0) {
-                document.getElementById('nota-diskon-text').innerText = `-Rp${Math.round(diskonFinal).toLocaleString('id-ID')} (${kodeVoucherFinal})`;
-                if(notaDiskonWrap) notaDiskonWrap.classList.remove('hidden');
-            } else {
-                if(notaDiskonWrap) notaDiskonWrap.classList.add('hidden');
-            }
-
-            document.getElementById('nota-grandtotal').innerText = 'Rp' + total.toLocaleString('id-ID');
-            document.getElementById('nota-bayar').innerText = 'Rp' + Math.round(bayar).toLocaleString('id-ID');
-            document.getElementById('nota-metode').innerText = selectedPayment === 'Member' ? 'Potong Saldo Member' : selectedPayment;
-
-            const sisaWrap = document.getElementById('nota-sisa-wrapper');
-            const statusLbl = document.getElementById('nota-status-label');
-            if(statusBayar === 'BELUM LUNAS') {
-                document.getElementById('nota-sisa').innerText = 'Rp' + Math.round(sisa).toLocaleString('id-ID');
-                if(sisaWrap) sisaWrap.classList.remove('hidden');
-                if(statusLbl) {
-                    statusLbl.innerText = sisa === total ? 'STATUS: BAYAR DI AKHIR' : 'STATUS: BELUM LUNAS (DP)';
-                    statusLbl.className = 'text-center font-bold text-sm text-amber-600';
+                let idxLocal = dataOrder.findIndex(o => o.id === invoiceId);
+                if (idxLocal !== -1) {
+                    dataOrder[idxLocal] = {
+                        id: invoiceId,
+                        nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
+                        telepon: telepon,
+                        items: [...keranjangTransaksi],
+                        diskon: diskonFinal,
+                        kodeVoucher: kodeVoucherFinal,
+                        total: total,
+                        bayar: bayar,
+                        sisa: sisa,
+                        statusBayar: statusBayar,
+                        status: statusCucianDefault,
+                        metode: selectedPayment,
+                        tanggal: tglOrderFormatted,
+                        estimasi: estimasiSelesaiText,
+                        catatan: catatan
+                    };
                 }
-            } else {
-                if(sisaWrap) sisaWrap.classList.add('hidden');
-                if(statusLbl) {
-                    statusLbl.innerText = selectedPayment === 'Member' ? 'STATUS: LUNAS (POTONG SALDO MEMBER)' : 'STATUS: LUNAS';
-                    statusLbl.className = 'text-center font-bold text-sm text-emerald-600';
-                }
-            }
 
-            const notaCatatanEl = document.getElementById('nota-catatan-wrapper');
-            if(catatan) {
-                document.getElementById('nota-catatan-text').innerText = catatan;
-                if(notaCatatanEl) notaCatatanEl.classList.remove('hidden');
+                lastCreatedOrder = dataOrder[idxLocal];
+                isRevisingOrderId = null;
+                document.getElementById('form-transaksi-title').innerText = 'Buat Transaksi Baru';
+                document.getElementById('btn-batal-revisi').classList.add('hidden');
+                document.getElementById('btn-proses-transaksi').innerText = 'PROSES & CETAK NOTA';
             } else {
-                if(notaCatatanEl) notaCatatanEl.classList.add('hidden');
+                invoiceId = 'INV-' + Date.now().toString().slice(-6);
+                const newOrder = {
+                    invoice_id: invoiceId,
+                    nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
+                    telepon: telepon,
+                    items: JSON.stringify(keranjangTransaksi),
+                    diskon: diskonFinal,
+                    kode_voucher: kodeVoucherFinal,
+                    total: total,
+                    bayar: bayar,
+                    sisa: sisa,
+                    status_bayar: statusBayar,
+                    status: 'DIPROSES',
+                    metode: selectedPayment,
+                    tanggal: tglOrderFormatted,
+                    estimasi: estimasiSelesaiText,
+                    catatan: catatan
+                };
+
+                await supabaseClient.from('orders').insert([newOrder]);
+                
+                lastCreatedOrder = {
+                    id: invoiceId,
+                    nama: newOrder.nama,
+                    telepon: telepon,
+                    items: [...keranjangTransaksi],
+                    diskon: diskonFinal,
+                    kodeVoucher: kodeVoucherFinal,
+                    total: total,
+                    bayar: bayar,
+                    sisa: sisa,
+                    statusBayar: statusBayar,
+                    status: 'DIPROSES',
+                    metode: selectedPayment,
+                    tanggal: tglOrderFormatted,
+                    estimasi: estimasiSelesaiText,
+                    catatan: catatan
+                };
+
+                dataOrder.unshift(lastCreatedOrder);
             }
 
             keranjangTransaksi = [];
-            diskonVoucherAktif = 0;
-            kodeVoucherTerpakai = '';
-            selectedKatalogItem = null;
-            document.getElementById('selected-service-banner').classList.add('hidden');
-            const infoVoucher = document.getElementById('infoVoucher');
-            if(infoVoucher) infoVoucher.innerText = '';
-            const selectVoucher = document.getElementById('pilihVoucher');
-            if(selectVoucher) selectVoucher.value = '0';
-            if(catatanEl) catatanEl.value = '';
-            const inputNamaUmum = document.getElementById('input-nama-umum');
-            const inputWaUmum = document.getElementById('input-wa-umum');
-            if(inputNamaUmum) inputNamaUmum.value = '';
-            if(inputWaUmum) inputWaUmum.value = '';
+            document.getElementById('input-catatan').value = '';
+            
+            tampilkanNotaBerhasil(lastCreatedOrder);
+        }
+
+        function tampilkanNotaBerhasil(order) {
+            document.getElementById('nota-logo-img').src = appSettings.logoUrl;
+            document.getElementById('nota-store-name').innerText = appSettings.storeName.toUpperCase();
+            document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
+            document.getElementById('nota-id').innerText = order.id;
+            document.getElementById('nota-tanggal').innerText = order.tanggal;
+            document.getElementById('nota-estimasi-selesai').innerText = order.estimasi;
+            document.getElementById('nota-pelanggan').innerText = order.nama;
+            
+            const containerItems = document.getElementById('nota-items-container');
+            containerItems.innerHTML = '';
+            order.items.forEach(item => {
+                let sub = item.harga * item.qty;
+                containerItems.innerHTML += `
+                    <div class="flex justify-between">
+                        <span>${item.nama} (${item.qty} ${item.satuan} x ${item.harga.toLocaleString('id-ID')})</span>
+                        <span>Rp${sub.toLocaleString('id-ID')}</span>
+                    </div>
+                `;
+            });
+
+            const diskonWrapper = document.getElementById('nota-diskon-wrapper');
+            const diskonText = document.getElementById('nota-diskon-text');
+            if(order.diskon && order.diskon > 0) {
+                diskonWrapper.classList.remove('hidden');
+                diskonText.innerText = '-Rp' + Math.round(order.diskon).toLocaleString('id-ID');
+            } else {
+                diskonWrapper.classList.add('hidden');
+            }
+
+            const catatanWrapper = document.getElementById('nota-catatan-wrapper');
+            const catatanText = document.getElementById('nota-catatan-text');
+            if(order.catatan && order.catatan.trim() !== '') {
+                catatanWrapper.classList.remove('hidden');
+                catatanText.innerText = order.catatan;
+            } else {
+                catatanWrapper.classList.add('hidden');
+            }
+
+            document.getElementById('nota-grandtotal').innerText = 'Rp' + Number(order.total).toLocaleString('id-ID');
+            document.getElementById('nota-bayar').innerText = 'Rp' + Number(order.bayar).toLocaleString('id-ID');
+            document.getElementById('nota-sisa').innerText = 'Rp' + Number(order.sisa).toLocaleString('id-ID');
+            document.getElementById('nota-metode').innerText = order.metode;
+            
+            const statusLabel = document.getElementById('nota-status-label');
+            statusLabel.innerText = `STATUS: ${order.statusBayar}`;
+            if(order.statusBayar === 'LUNAS') {
+                statusLabel.className = "text-center font-bold text-sm text-emerald-600";
+            } else {
+                statusLabel.className = "text-center font-bold text-sm text-rose-600";
+            }
+
+            document.getElementById('nota-footer-message').innerHTML = `Terima kasih telah mempercayakan<br>cucian Anda di <span class="font-bold text-pink-600">${appSettings.storeName}</span>`;
 
             switchView('view-nota');
         }
 
-        async function lunasiOrder(id) {
-            if (!supabaseClient) return;
-            const o = dataOrder.find(item => item.id === id);
-            if(o) {
-                if(confirm(`Lunasi sisa pembayaran Rp${Number(o.sisa).toLocaleString('id-ID')} untuk nota ${o.id}?`)) {
-                    o.bayar = o.total;
-                    o.sisa = 0;
-                    o.statusBayar = 'LUNAS';
-                    await supabaseClient.from('orders').update({ bayar: o.total, sisa: 0, status_bayar: 'LUNAS' }).eq('invoice_id', o.id);
-                    renderDaftarOrder();
-                    alert('Pembayaran berhasil dilunasi!');
-                }
-            }
-        }
-
-        function kirimNotaWAAktif() {
-            if(!lastCreatedOrder) return;
-            kirimNotaWA(lastCreatedOrder.id);
-        }
-
-        function kirimNotaWA(id) {
-            const o = dataOrder.find(item => item.id === id);
-            if(!o) return;
-
-            let phoneClean = o.telepon ? o.telepon.replace(/^0/, '62') : '628123456789';
-            let itemStr = '';
-            if(o.items && o.items.length > 0) {
-                o.items.forEach(i => {
-                    itemStr += `• ${i.nama} (${i.qty} ${i.satuan}) - Rp${(i.harga * i.qty).toLocaleString('id-ID')}\n`;
-                });
-            }
-
-            let diskonStr = o.diskon > 0 ? `• Diskon Voucher (${o.kodeVoucher}): -Rp${Number(o.diskon).toLocaleString('id-ID')}\n` : '';
-
-            let pesan = `Halo Kak *${o.nama}*,\n\nTerima kasih telah mempercayakan cucian Anda di *${appSettings.storeName}* 👕✨\n\n*Detail Nota (${o.id}):* \n${itemStr}\n${diskonStr}*Total Tagihan: Rp${Number(o.total).toLocaleString('id-ID')}*\n• Tanggal Masuk: ${o.tanggal}\n• Estimasi Selesai: *${o.estimasi || '-'}*\n• Dibayar: Rp${Number(o.bayar).toLocaleString('id-ID')}\n${o.sisa > 0 ? '• Sisa Tagihan: *Rp' + Number(o.sisa).toLocaleString('id-ID') + '*\n• Status Bayar: *BELUM LUNAS*\n' : '• Status Bayar: *LUNAS*\n'}\n• Metode: ${o.metode === 'Member' ? 'Potong Saldo Member' : o.metode}\n• Status Cucian: *${o.status}*\n${o.catatan ? '• Catatan: ' + o.catatan + '\n' : ''}\n${appSettings.footerText} 🙏`;
-
-            let url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(pesan)}`;
-            window.open(url, '_blank');
-        }
-
         function filterOrder(status) {
             currentFilterStatus = status;
-            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(s => {
-                const btnId = 'btn-cat-' + (s === 'SEMUA' ? 'semua' : s === 'DIPROSES' ? 'diproses' : s === 'SIAP DIAMBIL' ? 'siap' : 'selesai');
-                const btn = document.getElementById(btnId);
+            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(st => {
+                const btn = document.getElementById(`btn-cat-${st === 'SEMUA' ? 'semua' : (st === 'DIPROSES' ? 'diproses' : (st === 'SIAP DIAMBIL' ? 'siap' : 'selesai'))}`);
                 if(btn) {
-                    if(s === status) {
+                    if(st === status) {
                         btn.className = "p-2 bg-pink-600 text-white rounded-xl shadow-xs";
                     } else {
                         btn.className = "p-2 bg-white text-gray-600 rounded-xl shadow-xs";
@@ -1639,158 +1885,158 @@
             if(!container) return;
             const keyword = searchOrder ? searchOrder.value.toLowerCase() : '';
             container.innerHTML = '';
-            
-            let diproses = 0, siap = 0, selesai = 0;
-
-            dataOrder.forEach(o => {
-                if(o.status === 'DIPROSES') diproses++;
-                if(o.status === 'SIAP DIAMBIL') siap++;
-                if(o.status === 'SELESAI') selesai++;
-            });
 
             let filtered = dataOrder.filter(o => {
-                const matchKeyword = o.nama.toLowerCase().includes(keyword) || o.id.toLowerCase().includes(keyword);
-                const matchStatus = currentFilterStatus === 'SEMUA' || o.status === currentFilterStatus;
-                return matchKeyword && matchStatus;
+                let matchKeyword = o.id.toLowerCase().includes(keyword) || o.nama.toLowerCase().includes(keyword);
+                if(currentFilterStatus === 'SEMUA') return matchKeyword;
+                return matchKeyword && o.status === currentFilterStatus;
             });
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div class="text-center p-6 text-xs text-gray-400 bg-white rounded-2xl shadow-sm">Belum ada data order laundry</div>';
+                return;
+            }
 
             filtered.forEach(o => {
-                let borderColor = 'border-blue-500';
-                let badgeColor = 'bg-blue-100 text-blue-700';
-                if(o.status === 'SIAP DIAMBIL') { borderColor = 'border-amber-500'; badgeColor = 'bg-amber-100 text-amber-700'; }
-                if(o.status === 'SELESAI') { borderColor = 'border-emerald-500'; badgeColor = 'bg-emerald-100 text-emerald-700'; }
+                let badgeColor = "bg-blue-100 text-blue-700";
+                if(o.status === 'SIAP DIAMBIL') badgeColor = "bg-amber-100 text-amber-700";
+                if(o.status === 'SELESAI') badgeColor = "bg-emerald-100 text-emerald-700";
 
-                let sisaVal = Number(o.sisa) || 0;
-                let totalVal = Number(o.total) || 0;
-                let badgeBayar = o.statusBayar === 'LUNAS' 
-                    ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">LUNAS</span>' 
-                    : `<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold">BELUM LUNAS (Rp${sisaVal.toLocaleString('id-ID')})</span>`;
-
-                let itemSummaryHtml = '';
-                if(o.items && o.items.length > 0) {
-                    o.items.forEach(i => {
-                        itemSummaryHtml += `<div class="text-xs text-gray-600">• ${i.nama} (${i.qty} ${i.satuan})</div>`;
-                    });
-                }
-
-                let badgeVoucherInfo = o.diskon > 0 ? `<div class="text-xs text-pink-600 font-semibold">• Diskon Voucher (${o.kodeVoucher}): -Rp${Number(o.diskon).toLocaleString('id-ID')}</div>` : '';
+                let itemsSummary = o.items.map(i => `${i.qty} ${i.satuan} ${i.nama}`).join(', ');
 
                 container.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2 border-l-4 ${borderColor}">
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>${o.id} - ${o.tanggal || ''}</span>
-                            <span class="${badgeColor} font-bold px-2 py-0.5 rounded">${o.status}</span>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2 border border-gray-100">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-xs text-pink-600">${o.id} - ${o.tanggal}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}">${o.status}</span>
                         </div>
-                        <div class="font-bold text-gray-800 text-sm">${o.nama}</div>
-                        <div class="bg-gray-50 p-2 rounded-xl space-y-0.5">
-                            ${itemSummaryHtml}
-                            ${badgeVoucherInfo}
+                        <div class="text-xs text-gray-800">
+                            <p class="font-bold">${o.nama}</p>
+                            <p class="text-gray-500 truncate">${itemsSummary}</p>
                         </div>
-                        <div class="text-xs text-pink-600 font-medium">Estimasi Selesai: <strong>${o.estimasi || '-'}</strong></div>
-                        <div class="flex justify-between items-center text-xs pt-1">
-                            <span class="text-gray-600 font-semibold">Total: Rp${totalVal.toLocaleString('id-ID')} (${o.metode})</span>
-                            ${badgeBayar}
-                        </div>
-                        ${o.catatan ? `<div class="text-[11px] text-gray-500 italic bg-gray-50 p-1.5 rounded">Catatan: ${o.catatan}</div>` : ''}
                         <div class="flex justify-between items-center pt-2 border-t text-xs">
-                            <div class="space-x-1 flex items-center">
-                                ${o.statusBayar === 'BELUM LUNAS' ? `<button onclick="lunasiOrder('${o.id}')" class="bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-bold">Lunasi</button>` : ''}
-                                <button onclick="kirimNotaWA('${o.id}')" class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg font-bold"><i class="fa-brands fa-whatsapp"></i></button>
+                            <div>
+                                <span class="text-gray-400 text-[10px] block">Total Tagihan</span>
+                                <span class="font-bold text-gray-800">Rp${Number(o.total).toLocaleString('id-ID')}</span>
                             </div>
                             <div class="space-x-1 flex items-center">
-                                <button onclick="ubahStatus('${o.id}')" class="bg-pink-100 text-pink-700 px-2.5 py-1 rounded-lg font-bold">Ubah Status</button>
-                                <button onclick="hapusOrder('${o.id}')" class="text-rose-500 p-1"><i class="fa-solid fa-trash"></i></button>
+                                <button onclick="bukaUlangNota('${o.id}')" class="bg-pink-50 hover:bg-pink-100 text-pink-700 px-2.5 py-1 rounded-lg font-bold text-[11px]">Nota</button>
+                                <select onchange="ubahStatusOrder('${o.id}', this.value)" class="p-1 border rounded-lg text-[11px] bg-gray-50 font-semibold">
+                                    <option value="" disabled selected>Status...</option>
+                                    <option value="DIPROSES">Proses</option>
+                                    <option value="SIAP DIAMBIL">Siap</option>
+                                    <option value="SELESAI">Selesai</option>
+                                </select>
+                                <button onclick="revisiOrder('${o.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 p-1.5 rounded-lg text-[11px]" title="Revisi Order"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="resetAtauHapusOrder('${o.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-lg text-[11px]" title="Reset/Hapus Order"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
-                    </div>`;
+                    </div>
+                `;
             });
-
-            const cp = document.getElementById('count-diproses');
-            const cs = document.getElementById('count-siap');
-            const csel = document.getElementById('count-selesai');
-            if(cp) cp.innerText = diproses;
-            if(cs) cs.innerText = siap;
-            if(csel) csel.innerText = selesai;
         }
 
-        async function ubahStatus(id) {
+        function bukaUlangNota(id) {
+            const order = dataOrder.find(o => o.id === id);
+            if(order) {
+                lastCreatedOrder = order;
+                tampilkanNotaBerhasil(order);
+            }
+        }
+
+        async function ubahStatusOrder(id, statusBaru) {
             if (!supabaseClient) return;
             const order = dataOrder.find(o => o.id === id);
             if(order) {
-                if(order.status === 'DIPROSES') order.status = 'SIAP DIAMBIL';
-                else if(order.status === 'SIAP DIAMBIL') order.status = 'SELESAI';
-                else order.status = 'DIPROSES';
-                
-                await supabaseClient.from('orders').update({ status: order.status }).eq('invoice_id', order.id);
+                order.status = statusBaru;
+                await supabaseClient.from('orders').update({ status: statusBaru }).eq('invoice_id', id);
                 renderDaftarOrder();
+                updateDashboardKeuangan();
             }
         }
 
-        async function hapusOrder(id) {
-            if (!supabaseClient) return;
-            if(confirm('Hapus data order ini?')) {
-                await supabaseClient.from('orders').delete().eq('invoice_id', id);
-                dataOrder = dataOrder.filter(o => o.id !== id);
-                renderDaftarOrder();
+        function kirimNotaWAAktif() {
+            if(!lastCreatedOrder) return;
+            let hp = lastCreatedOrder.telepon || '08123456789';
+            if(hp.startsWith('0')) hp = '62' + hp.slice(1);
+
+            let rincianList = lastCreatedOrder.items.map(i => `- ${i.qty} ${i.satuan} ${i.nama} (Rp${(i.harga * i.qty).toLocaleString('id-ID')})`).join('\n');
+
+            let pesan = `Halo ${lastCreatedOrder.nama},\n\nTerima kasih telah mempercayakan cucian Anda di *${appSettings.storeName}*.\n\n*No Nota:* ${lastCreatedOrder.id}\n*Tanggal:* ${lastCreatedOrder.tanggal}\n*Estimasi Selesai:* ${lastCreatedOrder.estimasi}\n\n*Rincian Cucian:*\n${rincianList}\n`;
+            
+            if(lastCreatedOrder.diskon > 0) {
+                pesan += `*Diskon:* -Rp${Math.round(lastCreatedOrder.diskon).toLocaleString('id-ID')}\n`;
             }
+            if(lastCreatedOrder.catatan) {
+                pesan += `*Catatan:* ${lastCreatedOrder.catatan}\n`;
+            }
+
+            pesan += `\n*Total Biaya:* Rp${Number(lastCreatedOrder.total).toLocaleString('id-ID')}\n*Dibayar:* Rp${Number(lastCreatedOrder.bayar).toLocaleString('id-ID')}\n*Sisa:* Rp${Number(lastCreatedOrder.sisa).toLocaleString('id-ID')}\n*Status:* ${lastCreatedOrder.statusBayar}\n\n${appSettings.footerText}`;
+
+            window.open(`https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`, '_blank');
         }
 
         function updateDashboardKeuangan() {
-            let totalPendapatanMasuk = 0;
-            let cashSum = 0, transferSum = 0, qrisSum = 0, memberSum = 0;
-            let totalPengeluaran = 0;
+            let totalPemasukan = 0;
+            let sumCash = 0;
+            let sumTransfer = 0;
+            let sumQris = 0;
+            let sumMember = 0;
 
             dataOrder.forEach(o => {
                 let bayarVal = Number(o.bayar) || 0;
-                totalPendapatanMasuk += bayarVal;
-                if(o.metode === 'Cash') cashSum += bayarVal;
-                if(o.metode === 'Transfer') transferSum += bayarVal;
-                if(o.metode === 'QRIS') qrisSum += bayarVal;
-                if(o.metode === 'Member') memberSum += bayarVal;
+                totalPemasukan += bayarVal;
+                if(o.metode === 'Cash') sumCash += bayarVal;
+                else if(o.metode === 'Transfer') sumTransfer += bayarVal;
+                else if(o.metode === 'QRIS') sumQris += bayarVal;
+                else if(o.metode === 'Member') sumMember += bayarVal;
             });
 
+            let totalPengeluaran = 0;
             dataPengeluaran.forEach(e => {
                 totalPengeluaran += (Number(e.amount) || 0);
             });
 
-            let saldoBersih = totalPendapatanMasuk - totalPengeluaran;
+            let saldoKasBersih = totalPemasukan - totalPengeluaran;
 
-            const elHead = document.getElementById('header-pendapatan');
-            const elDash = document.getElementById('dash-pendapatan');
-            const elTotOrd = document.getElementById('dash-total-order');
-            const elTotExp = document.getElementById('dash-total-pengeluaran');
-            const elTotMem = document.getElementById('dash-total-member');
+            const formatRp = (val) => 'Rp' + val.toLocaleString('id-ID');
 
-            if(elHead) elHead.innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
-            if(elDash) elDash.innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
-            if(elTotOrd) elTotOrd.innerText = dataOrder.length;
-            if(elTotExp) elTotExp.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            if(elTotMem) elTotMem.innerText = dataPelanggan.length;
+            document.getElementById('dash-pendapatan').innerText = formatRp(saldoKasBersih);
+            document.getElementById('header-pendapatan').innerText = formatRp(saldoKasBersih);
+            document.getElementById('dash-total-order').innerText = dataOrder.length;
+            document.getElementById('dash-total-pengeluaran').innerText = formatRp(totalPengeluaran);
+            document.getElementById('dash-total-member').innerText = dataPelanggan.length;
 
-            const finPem = document.getElementById('fin-pemasukan');
-            const finExp = document.getElementById('fin-pengeluaran');
-            const sumCash = document.getElementById('sum-cash');
-            const sumTrf = document.getElementById('sum-transfer');
-            const sumQris = document.getElementById('sum-qris');
-            const sumMemb = document.getElementById('sum-member');
+            const cProses = dataOrder.filter(o => o.status === 'DIPROSES').length;
+            const cSiap = dataOrder.filter(o => o.status === 'SIAP DIAMBIL').length;
+            const cSelesai = dataOrder.filter(o => o.status === 'SELESAI').length;
 
-            if(finPem) finPem.innerText = 'Rp' + totalPendapatanMasuk.toLocaleString('id-ID');
-            if(finExp) finExp.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            if(sumCash) sumCash.innerText = 'Rp' + cashSum.toLocaleString('id-ID');
-            if(sumTrf) sumTrf.innerText = 'Rp' + transferSum.toLocaleString('id-ID');
-            if(sumQris) sumQris.innerText = 'Rp' + qrisSum.toLocaleString('id-ID');
-            if(sumMemb) sumMemb.innerText = 'Rp' + memberSum.toLocaleString('id-ID');
+            document.getElementById('count-diproses').innerText = cProses;
+            document.getElementById('count-siap').innerText = cSiap;
+            document.getElementById('count-selesai').innerText = cSelesai;
+
+            const finPemasukan = document.getElementById('fin-pemasukan');
+            const finPengeluaran = document.getElementById('fin-pengeluaran');
+            if(finPemasukan) finPemasukan.innerText = formatRp(totalPemasukan);
+            if(finPengeluaran) finPengeluaran.innerText = formatRp(totalPengeluaran);
+
+            if(document.getElementById('sum-cash')) {
+                document.getElementById('sum-cash').innerText = formatRp(sumCash);
+                document.getElementById('sum-transfer').innerText = formatRp(sumTransfer);
+                document.getElementById('sum-qris').innerText = formatRp(sumQris);
+                document.getElementById('sum-member').innerText = formatRp(sumMember);
+            }
         }
 
         function renderChartAnalitik() {
-            let totalPemasukan = 0;
-            let totalPengeluaran = 0;
-
-            dataOrder.forEach(o => { totalPemasukan += (Number(o.bayar) || 0); });
-            dataPengeluaran.forEach(e => { totalPengeluaran += (Number(e.amount) || 0); });
-
             const ctx = document.getElementById('chartAnalitik');
             if(!ctx) return;
+
+            let totalPemasukan = 0;
+            dataOrder.forEach(o => totalPemasukan += (Number(o.bayar) || 0));
+
+            let totalPengeluaran = 0;
+            dataPengeluaran.forEach(e => totalPengeluaran += (Number(e.amount) || 0));
 
             if(chartInstance) {
                 chartInstance.destroy();
@@ -1799,245 +2045,40 @@
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Pemasukan Kas', 'Pengeluaran Toko'],
+                    labels: ['Pemasukan Masuk', 'Pengeluaran Toko'],
                     datasets: [{
-                        label: 'Total (Rp)',
+                        label: 'Rupiah (Rp)',
                         data: [totalPemasukan, totalPengeluaran],
-                        backgroundColor: ['#10b981', '#f43f5e'],
-                        borderWidth: 0,
+                        backgroundColor: ['#059669', '#e11d48'],
                         borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { font: { size: 10 } }
-                        },
-                        x: {
-                            ticks: { font: { size: 10 } }
-                        }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
 
         function cetakLaporanKeuangan() {
             let totalPemasukan = 0;
+            dataOrder.forEach(o => totalPemasukan += (Number(o.bayar) || 0));
+
             let totalPengeluaran = 0;
+            dataPengeluaran.forEach(e => totalPengeluaran += (Number(e.amount) || 0));
 
-            dataOrder.forEach(o => { totalPemasukan += (Number(o.bayar) || 0); });
-            dataPengeluaran.forEach(e => { totalPengeluaran += (Number(e.amount) || 0); });
-            let saldoBersih = totalPemasukan - totalPengeluaran;
+            let bersih = totalPemasukan - totalPengeluaran;
 
-            document.getElementById('laporan-store-name').innerText = appSettings.storeName;
-            document.getElementById('laporan-tanggal-cetak').innerText = 'Dicetak pada: ' + todayString;
+            document.getElementById('laporan-store-name').innerText = appSettings.storeName.toUpperCase();
+            document.getElementById('laporan-tanggal-cetak').innerText = "Dicetak pada: " + new Date().toLocaleString('id-ID');
             document.getElementById('lap-tot-pemasukan').innerText = 'Rp' + totalPemasukan.toLocaleString('id-ID');
             document.getElementById('lap-tot-pengeluaran').innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            document.getElementById('lap-tot-bersih').innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
+            document.getElementById('lap-tot-bersih').innerText = 'Rp' + bersih.toLocaleString('id-ID');
 
-            switchView('view-laporan-cetak');
-        }
-
-        // ============================================================
-        // BLUETOOTH THERMAL PRINTER (ESC/POS - Web Bluetooth)
-        // ============================================================
-        let btPrinterDevice = null;
-        let btPrinterCharacteristic = null;
-
-        const BT_SERVICE_UUIDS = [
-            '0000ff00-0000-1000-8000-00805f9b34fb',
-            '0000ffe0-0000-1000-8000-00805f9b34fb',
-            '49535343-fe7d-4ae5-8fa9-9fafd205e455'
-        ];
-        const BT_CHARACTERISTIC_UUIDS = [
-            '0000ff01-0000-1000-8000-00805f9b34fb',
-            '0000ffe1-0000-1000-8000-00805f9b34fb',
-            '49535343-8841-43f4-a8d4-ecbe34729bb3'
-        ];
-
-        function updateBluetoothStatus(text, connected = false) {
-            const el = document.getElementById('bt-printer-status');
-            if (!el) return;
-            el.textContent = 'Printer Bluetooth: ' + text;
-            el.classList.toggle('bt-connected', connected);
-        }
-
-        async function findWritableCharacteristic(server) {
-            for (const serviceUuid of BT_SERVICE_UUIDS) {
-                try {
-                    const service = await server.getPrimaryService(serviceUuid);
-                    for (const charUuid of BT_CHARACTERISTIC_UUIDS) {
-                        try {
-                            const ch = await service.getCharacteristic(charUuid);
-                            if (ch.properties.write || ch.properties.writeWithoutResponse) return ch;
-                        } catch (_) {}
-                    }
-                    const chars = await service.getCharacteristics();
-                    const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
-                    if (writable) return writable;
-                } catch (_) {}
-            }
-
-            try {
-                const services = await server.getPrimaryServices();
-                for (const service of services) {
-                    try {
-                        const chars = await service.getCharacteristics();
-                        const writable = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
-                        if (writable) return writable;
-                    } catch (_) {}
-                }
-            } catch (_) {}
-            return null;
-        }
-
-        async function hubungkanPrinterBluetooth() {
-            if (!navigator.bluetooth) {
-                alert('Browser ini belum mendukung Web Bluetooth. Gunakan Google Chrome di Android dan buka website melalui HTTPS.');
-                return;
-            }
-            try {
-                updateBluetoothStatus('mencari perangkat...');
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: BT_SERVICE_UUIDS
-                });
-                btPrinterDevice = device;
-                device.addEventListener('gattserverdisconnected', () => {
-                    btPrinterCharacteristic = null;
-                    updateBluetoothStatus('terputus');
-                });
-
-                updateBluetoothStatus('menghubungkan ke ' + (device.name || 'printer') + '...');
-                const server = await device.gatt.connect();
-                btPrinterCharacteristic = await findWritableCharacteristic(server);
-                if (!btPrinterCharacteristic) throw new Error('Karakteristik printer untuk menulis data tidak ditemukan.');
-
-                updateBluetoothStatus((device.name || 'Printer') + ' terhubung', true);
-                alert('Printer Bluetooth berhasil terhubung.');
-            } catch (error) {
-                console.error('Bluetooth Printer:', error);
-                btPrinterCharacteristic = null;
-                updateBluetoothStatus('belum terhubung');
-                if (error && error.name !== 'NotFoundError') {
-                    alert('Gagal menghubungkan printer Bluetooth: ' + (error.message || error));
-                }
-            }
-        }
-
-        function escPosText(str) {
-            if (!str) return '';
-            return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-        }
-
-        function twoColumns(left, right, width = 32) {
-            let l = String(left || '');
-            let r = String(right || '');
-            
-            if (l.length + r.length + 1 > width) {
-                l = l.substring(0, width - r.length - 1);
-            }
-            const spaces = width - l.length - r.length;
-            return l + ' '.repeat(Math.max(1, spaces)) + r;
-        }
-
-        async function cetakNotaBluetooth() {
-            if (!lastCreatedOrder) {
-                alert('Belum ada data transaksi terakhir yang bisa dicetak!');
-                return;
-            }
-            if (!btPrinterCharacteristic) {
-                if (confirm('Printer Bluetooth belum terhubung. Hubungkan sekarang?')) {
-                    await hubungkanPrinterBluetooth();
-                }
-                if (!btPrinterCharacteristic) return;
-            }
-
-            try {
-                const o = lastCreatedOrder;
-                let encoder = new TextEncoder();
-                let commands = [];
-
-                commands.push(new Uint8Array([0x1B, 0x40])); // Initialize printer
-                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
-
-                let textData = "";
-                textData += escPosText(appSettings.storeName.toUpperCase()) + "\n";
-                textData += "Premium Care Service\n";
-                textData += escPosText(appSettings.storeAddress) + "\n";
-                textData += "--------------------------------\n";
-                
-                commands.push(encoder.encode(textData));
-                commands.push(new Uint8Array([0x1B, 0x61, 0x00])); // Left align
-
-                let detailData = "";
-                                detailData += twoColumns("Tanggal", o.tanggal) + "\n";
-                detailData += twoColumns("Estimasi", o.estimasi) + "\n";
-                detailData += twoColumns("Pelanggan", o.nama) + "\n";
-                detailData += "--------------------------------\n";
-                detailData += "Rincian Layanan:\n";
-                
-                if (o.items && o.items.length > 0) {
-                    o.items.forEach(i => {
-                        let sub = i.harga * i.qty;
-                        detailData += `- ${i.nama} (${i.qty} ${i.satuan})\n`;
-                        detailData += twoColumns(`  Rp${i.harga.toLocaleString('id-ID')} x ${i.qty}`, `Rp${sub.toLocaleString('id-ID')}`) + "\n";
-                    });
-                }
-
-                if (o.diskon > 0) {
-                    detailData += twoColumns(`Diskon (${o.kodeVoucher})`, `-Rp${Number(o.diskon).toLocaleString('id-ID')}`) + "\n";
-                }
-
-                detailData += "--------------------------------\n";
-                detailData += twoColumns("Total Biaya", `Rp${Number(o.total).toLocaleString('id-ID')}`) + "\n";
-                detailData += twoColumns("Dibayar/DP", `Rp${Number(o.bayar).toLocaleString('id-ID')}`) + "\n";
-                
-                if (o.sisa > 0) {
-                    detailData += twoColumns("Sisa Kekurangan", `Rp${Number(o.sisa).toLocaleString('id-ID')}`) + "\n";
-                }
-                
-                detailData += twoColumns("Metode Bayar", o.metode === 'Member' ? 'Potong Saldo' : o.metode) + "\n";
-                detailData += "--------------------------------\n";
-
-                commands.push(encoder.encode(detailData));
-                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
-
-                let footerData = "";
-                footerData += (o.sisa > 0 ? "STATUS: BELUM LUNAS\n" : "STATUS: LUNAS\n");
-                if (o.catatan) {
-                    footerData += `Catatan: ${o.catatan}\n`;
-                }
-                footerData += "\n";
-                footerData += escPosText(appSettings.footerText) + "\n\n\n";
-
-                commands.push(encoder.encode(footerData));
-                commands.push(new Uint8Array([0x1D, 0x56, 0x41, 0x10])); // Cut paper
-
-                // Kirim perintah ke printer via Bluetooth (chunked agar stabil)
-                for (let cmd of commands) {
-                    let chunkSize = 512;
-                    for (let i = 0; i < cmd.length; i += chunkSize) {
-                        let chunk = cmd.slice(i, i + chunkSize);
-                        if (btPrinterCharacteristic.properties.writeWithoutResponse) {
-                            await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
-                        } else {
-                            await btPrinterCharacteristic.writeValue(chunk);
-                        }
-                    }
-                }
-
-                alert('Nota berhasil dicetak via Printer Bluetooth!');
-            } catch (error) {
-                console.error('Gagal mencetak:', error);
-                alert('Gagal mencetak nota via Bluetooth: ' + (error.message || error));
-            }
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById('view-laporan-cetak').classList.remove('hidden');
         }
     </script>
 </body>
