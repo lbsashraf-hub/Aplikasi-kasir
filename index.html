@@ -1935,23 +1935,24 @@
             }
         }
 
-        function escPosText(value) {
-            return String(value ?? '').replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '');
+                function escPosText(str) {
+            if (!str) return '';
+            // Pastikan string dikonversi aman tanpa membuang karakter pertama
+            return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, "");
         }
 
-        function centerLine(text, width = 32) {
-            text = escPosText(text);
-            if (text.length >= width) return text.substring(0, width);
-            const left = Math.floor((width - text.length) / 2);
-            return ' '.repeat(left) + text;
-        }
-
-                function twoColumns(left, right, width = 32) {
-            left = escPosText(left);
-            right = escPosText(right);
+        function twoColumns(left, right, width = 32) {
+            left = String(left || '');
+            right = String(right || '');
+            
+            // Jika total panjang melebihi lebar kertas, pangkas bagian BELAKANG teks kiri, bukan depannya
             if (left.length + right.length + 1 > width) {
                 left = left.substring(0, width - right.length - 1);
             }
+            const spaces = width - left.length - right.length;
+            return left + ' '.repeat(Math.max(1, spaces)) + right;
+        }
+
             const spaces = width - left.length - right.length;
             return left + ' '.repeat(Math.max(1, spaces)) + right;
         }
