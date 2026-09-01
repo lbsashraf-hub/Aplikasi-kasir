@@ -119,7 +119,7 @@
 
     <div id="splash-screen">
         <img id="splash-logo-display" src="logo-queen.png" alt="Queen Laundry Logo" class="splash-logo-img">
-        <div class="splash-loading-text">This Application Was Created By <b>rAshraf NR.</b></div>
+        <div class="splash-loading-text">This Application Was Created By <b>Ashraf NR</b></div>
     </div>
 
     <header class="bg-pink-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
@@ -1371,7 +1371,7 @@
             if(nameEl) nameEl.value = '';
             if(phoneEl) phoneEl.value = '';
             if(saldoEl) saldoEl.value = '50000';
-            alert('Member baru & Kuota Saldo berhasil disimpan ke Cloud!');
+            alert('Member baru & Kuota Saldo berhasil disimpan ke server queen laundry');
             renderDaftarPelanggan();
         }
 
@@ -1513,7 +1513,7 @@
 
         async function resetDataKeuangan() {
             if (!supabaseClient) return;
-            if(confirm('PERINGATAN KERAS: Aksi ini akan mereset dan menghapus SEMUA riwayat order/pemasukan serta pengeluaran toko dari Cloud. Lanjutkan?')) {
+            if(confirm('PERINGATAN KERAS: Aksi ini akan mereset dan menghapus SEMUA riwayat order/pemasukan serta pengeluaran toko dari server queen laundry. Lanjutkan?')) {
                 await supabaseClient.from('orders').delete().neq('id', 0);
                 await supabaseClient.from('pengeluaran').delete().neq('id', 0);
                 dataOrder = [];
