@@ -1871,7 +1871,6 @@
         }
 
         async function findWritableCharacteristic(server) {
-            // Try known printer services/characteristics first.
             for (const serviceUuid of BT_SERVICE_UUIDS) {
                 try {
                     const service = await server.getPrimaryService(serviceUuid);
@@ -1887,7 +1886,6 @@
                 } catch (_) {}
             }
 
-            // Fallback: inspect all exposed primary services.
             try {
                 const services = await server.getPrimaryServices();
                 for (const service of services) {
@@ -1935,26 +1933,20 @@
             }
         }
 
-                function escPosText(str) {
+        function escPosText(str) {
             if (!str) return '';
-            // Pastikan string dikonversi aman tanpa membuang karakter pertama
             return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, "");
         }
 
         function twoColumns(left, right, width = 32) {
-            left = String(left || '');
-            right = String(right || '');
+            let l = String(left || '');
+            let r = String(right || '');
             
-            // Jika total panjang melebihi lebar kertas, pangkas bagian BELAKANG teks kiri, bukan depannya
-            if (left.length + right.length + 1 > width) {
-                left = left.substring(0, width - right.length - 1);
+            if (l.length + r.length + 1 > width) {
+                l = l.substring(0, width - r.length - 1);
             }
-            const spaces = width - left.length - right.length;
-            return left + ' '.repeat(Math.max(1, spaces)) + right;
-        }
-
-            const spaces = width - left.length - right.length;
-            return left + ' '.repeat(Math.max(1, spaces)) + right;
+            const spaces = width - l.length - r.length;
+            return l + ' '.repeat(Math.max(1, spaces)) + r;
         }
 
         async function cetakNotaBluetooth() {
@@ -1971,88 +1963,77 @@
 
             try {
                 const o = lastCreatedOrder;
+                let encoder = new TextEncoder();
                 let commands = [];
-                
-                // Inisialisasi printer (ESC @)
-                commands.push(new Uint8Array([0x1B, 0x40]));
-                
-                // Header (Centered, Bold)
-                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Align Center
-                commands.push(new Uint8Array([0x1B, 0x45, 0x01])); // Bold On
-                commands.push(new TextEncoder().encode((appSettings.storeName || 'QUEEN LAUNDRY') + '\n'));
-                commands.push(new Uint8Array([0x1B, 0x45, 0x00])); // Bold Off
-                commands.push(new TextEncoder().encode('Premium Care Service\n'));
-                commands.push(new TextEncoder().encode((appSettings.storeAddress || 'Singaparna, Tasikmalaya') + '\n'));
-                commands.push(new TextEncoder().encode('--------------------------------\n'));
 
-                // Info Nota (Left aligned)
-                commands.push(new Uint8Array([0x1B, 0x61, 0x00])); // Align Left
-                commands.push(new TextEncoder().encode(twoColumns('No Nota:', o.id) + '\n'));
-                commands.push(new TextEncoder().encode(twoColumns('Tanggal:', o.tanggal) + '\n'));
-                commands.push(new TextEncoder().encode(twoColumns('Estimasi:', o.estimasi || '-') + '\n'));
-                commands.push(new TextEncoder().encode(twoColumns('Pelanggan:', o.nama) + '\n'));
-                commands.push(new TextEncoder().encode('--------------------------------\n'));
+                // ESC/POS Commands Init
+                commands.push(new Uint8Array([0x1B, 0x40])); // Initialize printer
+                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
 
-                // Items
-                commands.push(new TextEncoder().encode('Rincian Layanan:\n'));
+                let textData = "";
+                textData += escPosText(appSettings.storeName.toUpperCase()) + "\n";
+                textData += "Premium Care Service\n";
+                textData += escPosText(appSettings.storeAddress) + "\n";
+                textData += "--------------------------------\n";
+                
+                commands.push(encoder.encode(textData));
+                commands.push(new Uint8Array([0x1B, 0x61, 0x00])); // Left align
+
+                let detailData = "";
+                detailData += twoColumns("No Nota", o.id) + "\n";
+                detailData += twoColumns("Tanggal", o.tanggal) + "\n";
+                detailData += twoColumns("Estimasi", o.estimasi) + "\n";
+                detailData += twoColumns("Pelanggan", o.nama) + "\n";
+                detailData += "--------------------------------\n";
+                detailData += "Rincian Layanan:\n";
+
                 if (o.items && o.items.length > 0) {
                     o.items.forEach(i => {
                         let sub = i.harga * i.qty;
-                        commands.push(new TextEncoder().encode(`- ${i.nama}\n`));
-                        commands.push(new TextEncoder().encode(twoColumns(`  ${i.qty} ${i.satuan} x ${i.harga.toLocaleString('id-ID')}`, `Rp${sub.toLocaleString('id-ID')}`) + '\n'));
+                        detailData += `- ${i.nama} (${i.qty} ${i.satuan})\n`;
+                        detailData += twoColumns("  Rp" + i.harga.toLocaleString('id-ID') + " x " + i.qty, "Rp" + sub.toLocaleString('id-ID')) + "\n";
                     });
                 }
+
                 if (o.diskon > 0) {
-                    commands.push(new TextEncoder().encode(twoColumns(`Diskon (${o.kodeVoucher})`, `-Rp${Number(o.diskon).toLocaleString('id-ID')}`) + '\n'));
+                    detailData += twoColumns("Diskon (" + o.kodeVoucher + ")", "-Rp" + Number(o.diskon).toLocaleString('id-ID')) + "\n";
                 }
-                commands.push(new TextEncoder().encode('--------------------------------\n'));
 
-                // Totals & Status
-                commands.push(new TextEncoder().encode(twoColumns('Total Biaya:', 'Rp' + Number(o.total).toLocaleString('id-ID')) + '\n'));
-                commands.push(new TextEncoder().encode(twoColumns('Dibayar / DP:', 'Rp' + Number(o.bayar).toLocaleString('id-ID')) + '\n'));
+                detailData += "--------------------------------\n";
+                detailData += twoColumns("Total Biaya", "Rp" + Number(o.total).toLocaleString('id-ID')) + "\n";
+                detailData += twoColumns("Bayar / DP", "Rp" + Number(o.bayar).toLocaleString('id-ID')) + "\n";
                 if (o.sisa > 0) {
-                    commands.push(new TextEncoder().encode(twoColumns('Sisa Tagihan:', 'Rp' + Number(o.sisa).toLocaleString('id-ID')) + '\n'));
+                    detailData += twoColumns("Sisa Kekurangan", "Rp" + Number(o.sisa).toLocaleString('id-ID')) + "\n";
                 }
-                commands.push(new TextEncoder().encode(twoColumns('Metode Bayar:', o.metode === 'Member' ? 'Potong Saldo' : o.metode) + '\n'));
-                commands.push(new TextEncoder().encode('--------------------------------\n'));
+                detailData += twoColumns("Metode Bayar", o.metode === 'Member' ? 'Potong Saldo' : o.metode) + "\n";
+                detailData += "--------------------------------\n";
 
-                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Align Center
-                commands.push(new Uint8Array([0x1B, 0x45, 0x01])); // Bold On
-                let statusText = o.statusBayar === 'LUNAS' ? 'STATUS: LUNAS' : 'STATUS: BELUM LUNAS';
-                commands.push(new TextEncoder().encode(statusText + '\n'));
-                commands.push(new Uint8Array([0x1B, 0x45, 0x00])); // Bold Off
-                commands.push(new TextEncoder().encode('\n'));
-                
-                let cleanFooter = (appSettings.footerText || 'Terima kasih telah mempercayakan cucian Anda').replace(/<br>/g, '\n');
-                commands.push(new TextEncoder().encode(cleanFooter + '\n\n\n'));
+                commands.push(encoder.encode(detailData));
+                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Center align
 
-                // Feed & Cut (jika didukung printer)
-                commands.push(new Uint8Array([0x1D, 0x56, 0x42, 0x00]));
+                let footerData = "";
+                footerData += (o.sisa > 0 ? "STATUS: BELUM LUNAS\n" : "STATUS: LUNAS\n");
+                footerData += "\n" + escPosText(appSettings.footerText) + "\n\n\n";
 
-                // Gabungkan semua Uint8Array menjadi satu buffer pengiriman
-                let totalLength = commands.reduce((acc, val) => acc + val.length, 0);
-                let payload = new Uint8Array(totalLength);
-                let offset = 0;
+                commands.push(encoder.encode(footerData));
+                commands.push(new Uint8Array([0x1D, 0x56, 0x41, 0x10])); // Cut paper
+
+                // Send chunks to BLE characteristic
                 for (let cmd of commands) {
-                    payload.set(cmd, offset);
-                    offset += cmd.length;
-                }
-
-                // Kirim data secara bertahap (chunking) agar kompatibel dengan berbagai printer thermal Bluetooth
-                const CHUNK_SIZE = 512;
-                for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
-                    let chunk = payload.slice(i, i + CHUNK_SIZE);
-                    if (btPrinterCharacteristic.properties.writeWithoutResponse) {
-                        await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
-                    } else {
-                        await btPrinterCharacteristic.writeValue(chunk);
+                    const chunkSize = 512;
+                    for (let i = 0; i < cmd.length; i += chunkSize) {
+                        let chunk = cmd.slice(i, i + chunkSize);
+                        if (btPrinterCharacteristic.properties.writeWithoutResponse) {
+                            await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
+                        } else {
+                            await btPrinterCharacteristic.writeValue(chunk);
+                        }
                     }
                 }
-
-                alert('Nota berhasil dikirim ke Printer Bluetooth!');
-            } catch (err) {
-                console.error('Gagal mencetak via Bluetooth:', err);
-                alert('Gagal mencetak: ' + (err.message || err));
+                alert('Nota berhasil dicetak melalui Printer Bluetooth!');
+            } catch (error) {
+                console.error('Cetak Bluetooth Error:', error);
+                alert('Gagal mencetak via Bluetooth: ' + (error.message || error));
             }
         }
     </script>
