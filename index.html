@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Queen Laundry - Kasir Pro Ultimate v2</title>
     
     <link rel="manifest" href="manifest.json">
@@ -13,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
       @media print {
         body * { visibility: hidden; }
@@ -21,13 +25,13 @@
         #printable-laporan { position: absolute; left: 0; top: 0; width: 100%; }
       }
 
-      /* Splash Screen / Opening Animation Style */
       #splash-screen {
           position: fixed;
           top: 0;
           left: 0;
-          width: 100%;
-          height: 100%;
+          width: 100vw;
+          height: 100vh;
+          height: 100dvh;
           background-color: #fdf2f4;
           display: flex;
           flex-direction: column;
@@ -40,14 +44,17 @@
           opacity: 0;
           visibility: hidden;
       }
+
       .splash-logo-img {
-          width: 130px;
-          height: 130px;
-          object-fit: contain;
+          width: 140px;
+          height: 140px;
+          object-fit: cover;
           border-radius: 50%;
-          box-shadow: 0 10px 25px rgba(236, 72, 153, 0.2);
+          box-shadow: none;
+          background: transparent;
           animation: pulseLogo 1.5s infinite alternate;
       }
+
       .splash-loading-text {
           margin-top: 18px;
           font-size: 13px;
@@ -59,30 +66,76 @@
           0% { transform: scale(1); }
           100% { transform: scale(1.08); }
       }
+
+      /* Desain Kartu Durasi Pengerjaan Modern & Estetik */
+      .duration-options-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 4px;
+      }
+      .duration-card-label {
+          display: flex;
+          align-items: center;
+          background: #ffffff;
+          border: 2px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 10px 14px;
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      }
+      .duration-card-label input[type="radio"] {
+          accent-color: #db2777;
+          width: 16px;
+          height: 16px;
+          margin-right: 12px;
+      }
+      .duration-card-label .card-info {
+          display: flex;
+          flex-direction: column;
+      }
+      .duration-card-label .title-durasi {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1f2937;
+      }
+      .duration-card-label .desc-durasi {
+          font-size: 11px;
+          color: #6b7280;
+          margin-top: 1px;
+      }
+      /* State saat dipilih */
+      .duration-card-label:has(input[type="radio"]:checked) {
+          border-color: #db2777;
+          background: #fdf2f4;
+          box-shadow: 0 3px 6px rgba(219, 39, 119, 0.12);
+      }
     </style>
 </head>
 
 <body class="bg-gray-100 font-sans antialiased pb-24">
 
-    <!-- SPLASH SCREEN / OPENING APLIKASI -->
     <div id="splash-screen">
         <img id="splash-logo-display" src="logo-queen.png" alt="Queen Laundry Logo" class="splash-logo-img">
-        <div class="splash-loading-text">MEMUAT SISTEM KASIR...</div>
+        <div class="splash-loading-text">This Application Was Created By <b>Ashraf NR</b></div>
     </div>
 
-    <!-- HAMBURGER & TOP NAVIGATION BAR -->
     <header class="bg-pink-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
         <div class="flex items-center space-x-3">
-            <button onclick="toggleSidebar()" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-sm transition shadow" title="Menu Utama">
-                <i class="fa-solid fa-bars"></i>
+            <button onclick="toggleSidebar()" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-xs transition shadow" title="Menu Navigasi">
+                <i class="fa-solid fa-bars text-base"></i>
             </button>
             <div>
                 <h1 class="font-bold text-lg"><i class="fa-solid fa-shirt mr-2"></i> <span id="header-store-name">Queen Laundry</span></h1>
-                <p class="text-xs text-pink-100" id="current-date-header">Senin, 1 September 2026</p>
+                <p class="text-xs text-pink-100" id="current-date-header">Selasa, 1 September 2026</p>
             </div>
         </div>
         <div class="flex items-center space-x-2">
-            <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner">
+            <div id="sync-status-indicator" class="bg-emerald-700 p-2 rounded-full px-2.5 text-[11px] font-semibold shadow-inner flex items-center space-x-1" title="Status Database Supabase">
+                <i class="fa-solid fa-cloud text-[10px]" id="sync-icon"></i> <span id="sync-text">Cloud</span>
+            </div>
+            <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner hidden sm:flex">
                 <i class="fa-solid fa-wallet mr-1"></i> <span id="header-pendapatan">Rp 0</span>
             </div>
             <button onclick="switchView('view-pengaturan')" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-xs transition shadow" title="Pengaturan">
@@ -91,67 +144,52 @@
         </div>
     </header>
 
-    <!-- SIDEBAR / DRAWER MENU -->
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
-    <div id="sidebar-drawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform -translate-x-full transition-transform duration-300 flex flex-col">
-        <div class="bg-pink-600 text-white p-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <img id="sidebar-logo-img" src="logo-queen.png" alt="Logo" class="w-10 h-10 object-contain rounded-full bg-white p-0.5">
-                <div>
-                    <h2 class="font-bold text-sm" id="sidebar-store-title">Queen Laundry</h2>
-                    <p class="text-[10px] text-pink-100">Kasir Pro Ultimate v2</p>
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
+    <div id="sidebar-drawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform -translate-x-full transition-transform duration-300 flex flex-col justify-between">
+        <div class="p-5 space-y-6">
+            <div class="flex justify-between items-center border-b pb-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-9 h-9 bg-pink-600 text-white rounded-xl flex items-center justify-center font-bold shadow"><i class="fa-solid fa-shirt"></i></div>
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-sm" id="sidebar-store-title">Queen Laundry</h2>
+                        <span class="text-[10px] text-pink-600 font-semibold bg-pink-50 px-2 py-0.5 rounded-full">Kasir Pro Ultimate v2</span>
+                    </div>
                 </div>
+                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <button onclick="toggleSidebar()" class="text-white hover:text-pink-200 p-1">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto p-4 space-y-1 text-sm">
-            <button onclick="sidebarNavigate('view-dashboard')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-house w-5 text-pink-600"></i> <span>Dashboard Utama</span>
-            </button>
-            <button onclick="sidebarNavigate('view-transaksi')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-cash-register w-5 text-pink-600"></i> <span>Kasir / Transaksi Baru</span>
-            </button>
-            <button onclick="sidebarNavigate('view-order')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-list-check w-5 text-pink-600"></i> <span>Daftar Order & Nota</span>
-            </button>
-            <button onclick="sidebarNavigate('view-pelanggan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-users w-5 text-pink-600"></i> <span>Manajemen Member & Kuota</span>
-            </button>
-            <button onclick="sidebarNavigate('view-layanan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-tags w-5 text-pink-600"></i> <span>Katalog & Harga Layanan</span>
-            </button>
-            <button onclick="sidebarNavigate('view-keuangan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-wallet w-5 text-pink-600"></i> <span>Keuangan & Pengeluaran</span>
-            </button>
-            <button onclick="sidebarNavigate('view-pengaturan')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-medium transition">
-                <i class="fa-solid fa-gear w-5 text-pink-600"></i> <span>Pengaturan Toko & Logo</span>
-            </button>
+
+            <div class="space-y-1.5 text-sm font-medium">
+                <button onclick="switchView('view-dashboard'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-house w-5 text-center text-pink-600"></i><span>Dashboard Utama</span>
+                </button>
+                <button onclick="switchView('view-transaksi'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-cash-register w-5 text-center text-pink-600"></i><span>Kasir & Transaksi</span>
+                </button>
+                <button onclick="switchView('view-order'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-list-check w-5 text-center text-pink-600"></i><span>Daftar Order / Cucian</span>
+                </button>
+                <button onclick="switchView('view-pelanggan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-users w-5 text-center text-pink-600"></i><span>Member & Saldo Kuota</span>
+                </button>
+                <button onclick="switchView('view-layanan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-tags w-5 text-center text-pink-600"></i><span>Katalog & Layanan</span>
+                </button>
+                <button onclick="switchView('view-keuangan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-wallet w-5 text-center text-pink-600"></i><span>Keuangan & Pengeluaran</span>
+                </button>
+                <button onclick="switchView('view-pengaturan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                    <i class="fa-solid fa-gear w-5 text-center text-pink-600"></i><span>Pengaturan Toko & Nota</span>
+                </button>
+            </div>
         </div>
 
-        <div class="p-4 border-t border-gray-100 text-center text-xs text-gray-400">
+        <div class="p-4 border-t bg-gray-50 text-center text-xs text-gray-400">
             Queen Laundry System &copy; 2026
         </div>
     </div>
 
-    <!-- AUDIO BACKSOUND & BACKGROUND AUDIO SYSTEM -->
-    <div class="fixed top-16 right-4 z-40">
-        <button id="audio-toggle-btn" onclick="toggleBackgroundAudio()" class="bg-white/90 backdrop-blur-sm border border-pink-200 text-pink-600 hover:bg-pink-50 px-3 py-1.5 rounded-full shadow-md text-xs font-bold flex items-center space-x-1.5 transition">
-            <i id="audio-icon" class="fa-solid fa-volume-xmark"></i>
-            <span id="audio-label">Musik: Off</span>
-        </button>
-        <!-- Audio element menggunakan file online bebas hak cipta / lo-fi relaxing streaming -->
-        <audio id="bg-audio" loop preload="auto">
-            <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio>
-    </div>
-
     <main class="max-w-md mx-auto p-4">
 
-        <!-- DASHBOARD -->
         <section id="view-dashboard" class="view-section space-y-4">
             <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl p-5 shadow-lg">
                 <p class="text-xs uppercase tracking-wider opacity-80">Saldo Kas Bersih</p>
@@ -160,33 +198,6 @@
                     <div><span class="font-bold text-sm" id="dash-total-order">0</span><br>Total Order</div>
                     <div><span class="font-bold text-sm" id="dash-total-pengeluaran">Rp 0</span><br>Pengeluaran</div>
                     <div><span class="font-bold text-sm" id="dash-total-member">0</span><br>Member Aktif</div>
-                </div>
-            </div>
-
-            <!-- CUSTOM PRICING CALCULATOR WIDGET (FITUR BARU) -->
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 space-y-3">
-                <div class="flex items-center justify-between border-b pb-2">
-                    <h3 class="font-bold text-gray-800 text-sm flex items-center"><i class="fa-solid fa-calculator text-pink-600 mr-2"></i> Kalkulator Estimasi & Pembulatan</h3>
-                    <span class="text-[10px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full">Otomatis</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-[11px] text-gray-500 font-medium">Estimasi Berat / Jumlah</label>
-                        <input type="number" step="0.1" id="calc-estimasi-qty" value="1" min="0.1" oninput="hitungKalkulatorCepat()" class="w-full mt-1 p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
-                    </div>
-                    <div>
-                        <label class="text-[11px] text-gray-500 font-medium">Pilih Layanan</label>
-                        <select id="calc-estimasi-layanan" onchange="hitungKalkulatorCepat()" class="w-full mt-1 p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600"></select>
-                    </div>
-                </div>
-                <div class="bg-pink-50/70 p-2.5 rounded-xl flex justify-between items-center text-xs">
-                    <div>
-                        <span class="text-gray-500 block text-[10px]">Hasil Pembulatan Terdekat (500)</span>
-                        <span id="calc-hasil-rounded" class="font-bold text-pink-700 text-sm">Rp0</span>
-                    </div>
-                    <button onclick="masukkanHasilKalkulatorKeKasir()" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition">
-                        <i class="fa-solid fa-arrow-right mr-1"></i> Masukkan Kasir
-                    </button>
                 </div>
             </div>
 
@@ -229,29 +240,56 @@
                     </div>
                 </div>
             </div>
-
-            <!-- FEEDBACK / ULASAN PELANGGAN LANGSUNG (FITUR BARU) -->
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 space-y-3">
-                <div class="flex items-center justify-between border-b pb-2">
-                    <h3 class="font-bold text-gray-800 text-sm flex items-center"><i class="fa-solid fa-comment-dots text-pink-600 mr-2"></i> Kotak Ulasan Pelanggan</h3>
-                    <span id="badge-total-feedback" class="text-[10px] bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded-full">0 Ulasan</span>
-                </div>
-                <div class="space-y-2">
-                    <input type="text" id="input-feedback-nama" placeholder="Nama Pelanggan / Pemberi Ulasan" class="w-full p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600">
-                    <textarea id="input-feedback-pesan" rows="2" placeholder="Tuliskan masukan atau ulasan layanan..." class="w-full p-2 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600"></textarea>
-                    <button onclick="kirimFeedbackPelanggan()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded-xl text-xs shadow-xs transition">
-                        Kirim Ulasan Pelanggan
-                    </button>
-                </div>
-                <div id="list-feedback-container" class="max-h-36 overflow-y-auto space-y-2 pt-1"></div>
-            </div>
         </section>
 
-        <!-- TRANSAKSI / KASIR -->
         <section id="view-transaksi" class="view-section hidden space-y-4">
             <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 border-b pb-2">Buat Transaksi Baru</h3>
                 
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+                    <div>
+                        <label for="input-tanggal-order" class="text-xs text-gray-600 font-medium block">Tanggal Order:</label>
+                        <input type="date" id="input-tanggal-order" onchange="hitungEstimasiSelesai()" class="w-full mt-1 p-2 border rounded-xl text-xs bg-white focus:outline-pink-600">
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs text-gray-600 font-medium block mb-1">Durasi Pengerjaan:</label>
+                        <div class="duration-options-grid">
+                            <label class="duration-card-label">
+                                <input type="radio" name="service-duration-radio" value="1" onchange="onDurationChange(this.value)">
+                                <div class="card-info">
+                                    <span class="title-durasi">Express</span>
+                                    <span class="desc-durasi">1 Hari Pengerjaan</span>
+                                </div>
+                            </label>
+
+                            <label class="duration-card-label">
+                                <input type="radio" name="service-duration-radio" value="3" checked onchange="onDurationChange(this.value)">
+                                <div class="card-info">
+                                    <span class="title-durasi">Standar</span>
+                                    <span class="desc-durasi">3 Hari Pengerjaan</span>
+                                </div>
+                            </label>
+
+                            <label class="duration-card-label">
+                                <input type="radio" name="service-duration-radio" value="0.25" onchange="onDurationChange(this.value)">
+                                <div class="card-info">
+                                    <span class="title-durasi">Kilat</span>
+                                    <span class="desc-durasi">6 Jam Pengerjaan</span>
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Elemen select tersembunyi agar logika Javascript lama tetap aman -->
+                        <select id="service-duration" class="hidden">
+                            <option value="1">Express (1 Hari)</option>
+                            <option value="3" selected>Standar (3 Hari)</option>
+                            <option value="0.25">Kilat (6 Jam)</option>
+                        </select>
+                    </div>
+
+                    <p class="text-xs text-gray-600 pt-1"><strong>Estimasi Selesai:</strong> <span id="estimated-finish-date" class="text-pink-600 font-bold">-</span></p>
+                </div>
+
                 <div>
                     <label class="text-xs text-gray-500 font-medium">Tipe Pelanggan</label>
                     <div class="grid grid-cols-2 gap-2 mt-1">
@@ -277,7 +315,6 @@
                     </div>
                 </div>
 
-                <!-- FORM TAMBAH ITEM KE KERANJANG -->
                 <div class="bg-pink-50/60 p-3 rounded-2xl border border-pink-100 space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-xs font-bold text-gray-700"><i class="fa-solid fa-cart-plus mr-1 text-pink-600"></i> Pilih Layanan Laundry</span>
@@ -330,6 +367,18 @@
                     </div>
                 </div>
 
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-2">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pilih Voucher Diskon</label>
+                    <select id="pilihVoucher" onchange="pilihVoucherDiskon()" class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-pink-500 outline-none bg-white">
+                        <option value="0">-- Tidak Pakai Voucher --</option>
+                        <option value="QUEENHEMAT">QUEENHEMAT - Diskon 10%</option>
+                        <option value="DISKONKILAT">DISKONKILAT - Diskon 20%</option>
+                        <option value="HEMAT5RIBU">HEMAT5RIBU - Potongan Rp5.000</option>
+                        <option value="PROMO10RIBU">PROMO10RIBU - Potongan Rp10.000</option>
+                    </select>
+                    <p id="infoVoucher" class="text-xs mt-1 text-emerald-600 font-medium"></p>
+                </div>
+
                 <div>
                     <label class="text-xs text-gray-500 font-medium">Catatan Khusus Cucian (Opsional)</label>
                     <input type="text" id="input-catatan" placeholder="Cth: Pakaian putih dipisah, noda saos" class="w-full mt-1 p-2.5 border rounded-xl text-sm bg-gray-50 focus:outline-pink-600">
@@ -361,6 +410,7 @@
 
                 <div class="bg-pink-50 p-3 rounded-xl space-y-1 text-sm">
                     <div class="flex justify-between text-gray-600"><span>Subtotal</span> <span id="lbl-subtotal">Rp0</span></div>
+                    <div id="wrapper-lbl-diskon" class="flex justify-between text-pink-700 font-semibold hidden"><span>Diskon Voucher</span> <span id="lbl-diskon">-Rp0</span></div>
                     <div class="flex justify-between text-gray-600"><span>Pembayaran Masuk</span> <span id="lbl-bayar-masuk">Rp0</span></div>
                     <div class="flex justify-between font-bold text-pink-600 text-base pt-2 border-t border-pink-200"><span>TOTAL</span> <span id="lbl-total">Rp0</span></div>
                 </div>
@@ -371,7 +421,6 @@
             </div>
         </section>
 
-        <!-- ORDER -->
         <section id="view-order" class="view-section hidden space-y-3">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-gray-800 text-md">Daftar Order</h3>
@@ -388,12 +437,11 @@
             <div id="list-order-container" class="space-y-3"></div>
         </section>
 
-        <!-- MEMBER -->
         <section id="view-pelanggan" class="view-section hidden space-y-4">
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-user-plus mr-1 text-pink-600"></i> Join Member & Set Kuota Saldo</h3>
                 <input type="text" id="new-member-name" placeholder="Nama Lengkap Pelanggan" class="w-full p-2.5 border rounded-xl text-sm bg-gray-50">
-                <input type="text" id="new-member-phone" placeholder="No WhatsApp (08...)" class="w-full p-2.5 border rounded-xl text-sm bg-gray-50">
+                <input type="text" id="new-member-phone" placeholder="No WhatsApp (08...) - Opsional" class="w-full p-2.5 border rounded-xl text-sm bg-gray-50">
                 <div>
                     <label class="text-xs text-gray-500 font-medium">Saldo / Kuota Awal Member (Rp)</label>
                     <input type="number" id="new-member-saldo" value="50000" min="0" placeholder="Cth: 100000" class="w-full mt-1 p-2.5 border rounded-xl text-sm bg-gray-50">
@@ -413,7 +461,6 @@
             </div>
         </section>
 
-        <!-- LAYANAN / KATALOG -->
         <section id="view-layanan" class="view-section hidden space-y-4">
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 text-sm">Tambah Layanan Kiloan / Satuan</h3>
@@ -429,7 +476,6 @@
             <button onclick="switchView('view-transaksi')" class="w-full bg-gray-800 text-white font-bold py-2.5 rounded-xl text-sm">Kembali ke Kasir</button>
         </section>
 
-        <!-- KEUANGAN -->
         <section id="view-keuangan" class="view-section hidden space-y-4">
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3">
                 <h3 class="font-bold text-gray-800 text-sm">Catat Pengeluaran Toko</h3>
@@ -476,7 +522,6 @@
             </div>
         </section>
 
-        <!-- PENGATURAN APLIKASI / TOKO -->
         <section id="view-pengaturan" class="view-section hidden space-y-4">
             <div class="bg-white p-4 rounded-2xl shadow-sm space-y-4">
                 <div class="flex items-center space-x-2 border-b pb-2">
@@ -504,7 +549,7 @@
                     </div>
 
                     <button onclick="simpanPengaturan()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-md transition text-xs">
-                        SIMPAN PENGATURAN
+                        SIMPAN PENGATURAN TOKO
                     </button>
                 </div>
             </div>
@@ -513,7 +558,6 @@
             </button>
         </section>
 
-        <!-- NOTA -->
         <section id="view-nota" class="view-section hidden space-y-4">
             <div id="printable-nota" class="bg-white p-6 rounded-2xl shadow-md space-y-4 text-xs">
                 <div class="text-center space-y-1">
@@ -526,6 +570,7 @@
                 <div class="space-y-1 text-gray-700">
                     <div class="flex justify-between"><span>No Nota</span> <span id="nota-id" class="font-semibold">-</span></div>
                     <div class="flex justify-between"><span>Tanggal Masuk</span> <span id="nota-tanggal">-</span></div>
+                    <div class="flex justify-between"><span>Estimasi Selesai</span> <span id="nota-estimasi-selesai" class="font-semibold text-pink-600">-</span></div>
                     <div class="flex justify-between"><span>Pelanggan</span> <span id="nota-pelanggan" class="font-semibold">-</span></div>
                 </div>
                 <hr class="border-dashed">
@@ -534,6 +579,9 @@
                         <span>Rincian Layanan</span> <span>Subtotal</span>
                     </div>
                     <div id="nota-items-container" class="space-y-1 text-gray-600"></div>
+                    <div id="nota-diskon-wrapper" class="flex justify-between text-pink-600 mt-2 font-semibold hidden">
+                        <span>Diskon Voucher</span> <span id="nota-diskon-text">-Rp0</span>
+                    </div>
                     <div id="nota-catatan-wrapper" class="mt-2 text-gray-500 italic text-[11px] hidden">
                         Catatan: <span id="nota-catatan-text">-</span>
                     </div>
@@ -567,7 +615,6 @@
             </div>
         </section>
 
-        <!-- LAPORAN KEUANGAN CETAK -->
         <section id="view-laporan-cetak" class="view-section hidden space-y-4">
             <div id="printable-laporan" class="bg-white p-6 rounded-2xl shadow-md space-y-4 text-xs">
                 <div class="text-center space-y-1">
@@ -595,7 +642,6 @@
 
     </main>
 
-    <!-- BOTTOM NAVIGATION BAR -->
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around p-3 text-gray-500 text-xs shadow-lg z-40">
         <button onclick="switchView('view-dashboard')" class="flex flex-col items-center hover:text-pink-600 transition">
             <i class="fa-solid fa-house text-lg"></i>
@@ -616,127 +662,23 @@
     </nav>
 
     <script>
-        // SCRIPT HILANGKAN SPLASH SCREEN (Durasi 3.5 detik)
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.classList.add('fade-out');
-                }
-            }, 3500);
-        });
-
-        const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const todayString = new Date().toLocaleDateString('id-ID', optionsDate);
-        document.getElementById('current-date-header').innerText = todayString;
-
-        // PENGATURAN TOKO DEFAULT
-        let appSettings = JSON.parse(localStorage.getItem('ql_settings')) || {
-            storeName: 'Queen Laundry',
-            storeAddress: 'Singaparna, Tasikmalaya',
-            logoUrl: 'logo-queen.png',
-            footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry'
-        };
-
-        function applySettingsToUI() {
-            document.getElementById('header-store-name').innerText = appSettings.storeName;
-            document.getElementById('splash-logo-display').src = appSettings.logoUrl;
-            document.getElementById('sidebar-store-title').innerText = appSettings.storeName;
-            document.getElementById('sidebar-logo-img').src = appSettings.logoUrl;
-            
-            // Isi form pengaturan jika dibuka
-            document.getElementById('setting-store-name').value = appSettings.storeName;
-            document.getElementById('setting-store-address').value = appSettings.storeAddress;
-            document.getElementById('setting-footer-text').value = appSettings.footerText;
-        }
-        applySettingsToUI();
-
-        function simpanPengaturan() {
-            appSettings.storeName = document.getElementById('setting-store-name').value || 'Queen Laundry';
-            appSettings.storeAddress = document.getElementById('setting-store-address').value || 'Singaparna, Tasikmalaya';
-            appSettings.footerText = document.getElementById('setting-footer-text').value || 'Terima kasih telah mempercayakan cucian Anda';
-
-            const fileInput = document.getElementById('setting-logo-file');
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    appSettings.logoUrl = e.target.result;
-                    localStorage.setItem('ql_settings', JSON.stringify(appSettings));
-                    applySettingsToUI();
-                    alert('Pengaturan toko & logo galeri berhasil disimpan!');
-                    switchView('view-dashboard');
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                localStorage.setItem('ql_settings', JSON.stringify(appSettings));
-                applySettingsToUI();
-                alert('Pengaturan toko berhasil disimpan!');
-                switchView('view-dashboard');
-            }
-        }
-
-        // HAMBURGER SIDEBAR TOGGLE
-        function toggleSidebar() {
-            const drawer = document.getElementById('sidebar-drawer');
-            const overlay = document.getElementById('sidebar-overlay');
-            if(drawer && overlay) {
-                drawer.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
-            }
-        }
-
-        function sidebarNavigate(viewId) {
-            toggleSidebar();
-            switchView(viewId);
-        }
-
-        // BACKGROUND AUDIO CONTROLLER
-        let isAudioPlaying = false;
-        function toggleBackgroundAudio() {
-            const audioEl = document.getElementById('bg-audio');
-            const audioIcon = document.getElementById('audio-icon');
-            const audioLabel = document.getElementById('audio-label');
-            if(!audioEl) return;
-
-            if(isAudioPlaying) {
-                audioEl.pause();
-                isAudioPlaying = false;
-                audioIcon.className = "fa-solid fa-volume-xmark";
-                audioLabel.innerText = "Musik: Off";
-            } else {
-                audioEl.play().then(() => {
-                    isAudioPlaying = true;
-                    audioIcon.className = "fa-solid fa-volume-high";
-                    audioLabel.innerText = "Musik: On";
-                }).catch(err => {
-                    alert('Gagal memutar audio otomatis. Interaksi browser diperlukan.');
-                });
-            }
-        }
-
-        let dataPelanggan = JSON.parse(localStorage.getItem('ql_pelanggan')) || [
-            { nama: 'Ahmad', telepon: '08123456789', saldo: 150000 }
-        ];
-
-        let dataLayanan = JSON.parse(localStorage.getItem('ql_layanan')) || [
-            { nama: 'CUCI Setrika (Standar)', harga: 6500 },
-            { nama: 'Cuci Kering (Standar)', harga: 4500 },
-            { nama: 'Setrika (Standar)', harga: 4500 },
-            { nama: 'Drayer Only (Standar)', harga: 4500 },
-            { nama: 'Cuci Setrika (Expres)', harga: 13000 },
-            { nama: 'Cuci Kering (Expres)', harga: 10000 },
-            { nama: 'Setrika Only (Expres)', harga: 8000 },
-            { nama: 'Bedcover Single', harga: 20000 },
-            { nama: 'Bedcover Double', harga: 25000 },
-            { nama: 'Boneka Sedang', harga: 20000 },
-            { nama: 'Karpet Sedang', harga: 30000 },
-            { nama: 'Jas', harga: 35000 }
-        ];
+        // INISIALISASI SUPABASE AMAN
+        const SUPABASE_URL = 'https://uxutxeclfcvcvdiydmpw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_UMV1G-z6vj5x0sRKlvZfVA_ap4qZFkA';
         
-        let dataOrder = JSON.parse(localStorage.getItem('ql_order')) || [];
-        let dataPengeluaran = JSON.parse(localStorage.getItem('ql_expense')) || [];
-        let dataFeedback = JSON.parse(localStorage.getItem('ql_feedback')) || [];
+        let supabaseClient = null;
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        let dataPelanggan = [];
+        let dataLayanan = [];
+        let dataOrder = [];
+        let dataPengeluaran = [];
         let keranjangTransaksi = []; 
+        
+        let diskonVoucherAktif = 0;
+        let kodeVoucherTerpakai = '';
         
         let selectedTipePelanggan = 'member';
         let selectedPayment = 'Cash';
@@ -746,114 +688,213 @@
         let chartInstance = null;
         let selectedKatalogItem = null;
 
+        let appSettings = {
+            storeName: 'Queen Laundry',
+            storeAddress: 'Singaparna, Tasikmalaya',
+            logoUrl: 'logo-queen.png',
+            footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry'
+        };
+
+        window.addEventListener('load', async () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.classList.add('fade-out');
+                }
+            }, 3500);
+
+            const inputTglOrder = document.getElementById('input-tanggal-order');
+            if (inputTglOrder && !inputTglOrder.value) {
+                inputTglOrder.value = new Date().toISOString().split('T')[0];
+                hitungEstimasiSelesai();
+            }
+            
+            // Sinkronisasi status radio button default awal
+            const defaultRadio = document.querySelector('input[name="service-duration-radio"][value="3"]');
+            if(defaultRadio) defaultRadio.checked = true;
+
+            await loadCloudData();
+        });
+
+        const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const todayString = new Date().toLocaleDateString('id-ID', optionsDate);
+        document.getElementById('current-date-header').innerText = todayString;
+
+        async function loadCloudData() {
+            if (!supabaseClient) return;
+            try {
+                let { data: resPelanggan } = await supabaseClient.from('pelanggan').select('*');
+                if (resPelanggan && resPelanggan.length > 0) {
+                    dataPelanggan = resPelanggan;
+                } else {
+                    dataPelanggan = [{ nama: 'Ahmad', telepon: '08123456789', saldo: 150000 }];
+                }
+
+                let { data: resLayanan } = await supabaseClient.from('layanan').select('*');
+                if (resLayanan && resLayanan.length > 0) {
+                    dataLayanan = resLayanan;
+                } else {
+                    dataLayanan = [
+                        { nama: 'CUCI Setrika (Standar)', harga: 6500 },
+                        { nama: 'Cuci Kering (Standar)', harga: 4500 },
+                        { nama: 'Setrika (Standar)', harga: 4500 },
+                        { nama: 'Bedcover Single', harga: 20000 }
+                    ];
+                }
+
+                let { data: resOrder } = await supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
+                if (resOrder) {
+                    dataOrder = resOrder.map(o => ({
+                        id: o.invoice_id,
+                        nama: o.nama,
+                        telepon: o.telepon,
+                        items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items,
+                        diskon: o.diskon,
+                        kodeVoucher: o.kode_voucher,
+                        total: o.total,
+                        bayar: o.bayar,
+                        sisa: o.sisa,
+                        statusBayar: o.status_bayar,
+                        status: o.status,
+                        metode: o.metode,
+                        tanggal: o.tanggal,
+                        estimasi: o.estimasi,
+                        catatan: o.catatan
+                    }));
+                }
+
+                let { data: resExpense } = await supabaseClient.from('pengeluaran').select('*');
+                if (resExpense) {
+                    dataPengeluaran = resExpense.map(e => ({
+                        nama: e.nama,
+                        amount: e.amount,
+                        tanggal: e.tanggal
+                    }));
+                }
+
+                let { data: resSettings } = await supabaseClient.from('settings').select('*').limit(1);
+                if (resSettings && resSettings.length > 0) {
+                    appSettings = {
+                        storeName: resSettings[0].store_name,
+                        storeAddress: resSettings[0].store_address,
+                        logoUrl: resSettings[0].logo_url || 'logo-queen.png',
+                        footerText: resSettings[0].footer_text
+                    };
+                }
+
+                applySettingsToUI();
+                updateDashboardKeuangan();
+            } catch (err) {
+                console.error("Gagal memuat data dari Supabase:", err);
+            }
+        }
+
+        function onDurationChange(val) {
+            const selectEl = document.getElementById('service-duration');
+            if(selectEl) {
+                selectEl.value = val;
+                hitungEstimasiSelesai();
+            }
+        }
+
+        function hitungEstimasiSelesai() {
+            const inputTgl = document.getElementById('input-tanggal-order');
+            const durationEl = document.getElementById('service-duration');
+            const estEl = document.getElementById('estimated-finish-date');
+            
+            if(!inputTgl || !durationEl || !estEl) return '-';
+
+            let tglValue = inputTgl.value ? new Date(inputTgl.value) : new Date();
+            let durasi = parseFloat(durationEl.value);
+            
+            if (durasi < 1) {
+                tglValue.setHours(tglValue.getHours() + 6);
+            } else {
+                tglValue.setDate(tglValue.getDate() + durasi);
+            }
+
+            const opsiFormat = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            let hasilFormat = tglValue.toLocaleDateString('id-ID', opsiFormat);
+            
+            estEl.innerText = hasilFormat;
+            return hasilFormat;
+        }
+
+        function applySettingsToUI() {
+            document.getElementById('header-store-name').innerText = appSettings.storeName;
+            document.getElementById('sidebar-store-title').innerText = appSettings.storeName;
+            document.getElementById('splash-logo-display').src = appSettings.logoUrl;
+            
+            document.getElementById('setting-store-name').value = appSettings.storeName;
+            document.getElementById('setting-store-address').value = appSettings.storeAddress;
+            document.getElementById('setting-footer-text').value = appSettings.footerText;
+        }
+
+        function toggleSidebar() {
+            const drawer = document.getElementById('sidebar-drawer');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if(drawer && backdrop) {
+                drawer.classList.toggle('-translate-x-full');
+                backdrop.classList.toggle('hidden');
+            }
+        }
+
+        async function simpanPengaturan() {
+            appSettings.storeName = document.getElementById('setting-store-name').value || 'Queen Laundry';
+            appSettings.storeAddress = document.getElementById('setting-store-address').value || 'Singaparna, Tasikmalaya';
+            appSettings.footerText = document.getElementById('setting-footer-text').value || 'Terima kasih telah mempercayakan cucian Anda';
+
+            const fileInput = document.getElementById('setting-logo-file');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    appSettings.logoUrl = e.target.result;
+                    await saveSettingsToCloud();
+                    applySettingsToUI();
+                    alert('Pengaturan toko berhasil disimpan ke Cloud!');
+                    switchView('view-dashboard');
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                await saveSettingsToCloud();
+                applySettingsToUI();
+                alert('Pengaturan toko berhasil disimpan ke Cloud!');
+                switchView('view-dashboard');
+            }
+        }
+
+        async function saveSettingsToCloud() {
+            if (!supabaseClient) return;
+            await supabaseClient.from('settings').delete().neq('id', 0);
+            await supabaseClient.from('settings').insert([{
+                store_name: appSettings.storeName,
+                store_address: appSettings.storeAddress,
+                logo_url: appSettings.logoUrl,
+                footer_text: appSettings.footerText
+            }]);
+        }
+
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
             const targetView = document.getElementById(viewId);
             if(targetView) targetView.classList.remove('hidden');
             window.scrollTo(0, 0);
             
-            if(viewId === 'view-transaksi') { renderDropdownPelanggan(); renderKatalogGrid(); renderKeranjang(); }
+            if(viewId === 'view-transaksi') { 
+                renderDropdownPelanggan(); 
+                renderKatalogGrid(); 
+                renderKeranjang(); 
+                const inputTglOrder = document.getElementById('input-tanggal-order');
+                if(inputTglOrder && !inputTglOrder.value) {
+                    inputTglOrder.value = new Date().toISOString().split('T')[0];
+                }
+                hitungEstimasiSelesai(); 
+            }
             if(viewId === 'view-order') renderDaftarOrder();
             if(viewId === 'view-pelanggan') renderDaftarPelanggan();
             if(viewId === 'view-layanan') renderDaftarLayanan();
             if(viewId === 'view-keuangan') { updateDashboardKeuangan(); renderChartAnalitik(); }
-            if(viewId === 'view-dashboard') { updateDashboardKeuangan(); initKalkulatorDropdown(); renderListFeedback(); }
-        }
-
-        // CUSTOM PRICING CALCULATOR LOGIC
-        function initKalkulatorDropdown() {
-            const selectCalc = document.getElementById('calc-estimasi-layanan');
-            if(!selectCalc) return;
-            selectCalc.innerHTML = '';
-            dataLayanan.forEach(l => {
-                selectCalc.innerHTML += `<option value="${l.harga}">${l.nama} (Rp${l.harga})</option>`;
-            });
-            hitungKalkulatorCepat();
-        }
-
-        function hitungKalkulatorCepat() {
-            const qtyInput = document.getElementById('calc-estimasi-qty');
-            const selectCalc = document.getElementById('calc-estimasi-layanan');
-            const hasilRoundedEl = document.getElementById('calc-hasil-rounded');
-            if(!qtyInput || !selectCalc || !hasilRoundedEl) return;
-
-            let qty = parseFloat(qtyInput.value) || 0;
-            let hargaSatuan = parseFloat(selectCalc.value) || 0;
-            let rawTotal = qty * hargaSatuan;
-
-            // Logika Pembulatan Terdekat ke 500
-            let roundedTotal = Math.round(rawTotal / 500) * 500;
-            hasilRoundedEl.innerText = 'Rp' + roundedTotal.toLocaleString('id-ID');
-        }
-
-        function masukkanHasilKalkulatorKeKasir() {
-            const qtyInput = document.getElementById('calc-estimasi-qty');
-            const selectCalc = document.getElementById('calc-estimasi-layanan');
-            if(!qtyInput || !selectCalc) return;
-
-            let qty = parseFloat(qtyInput.value) || 1;
-            let selectedPrice = parseFloat(selectCalc.value) || 0;
-            let selectedNameText = selectCalc.options[selectCalc.selectedIndex].text.split(' (Rp')[0];
-
-            let existing = keranjangTransaksi.find(item => item.nama === selectedNameText && item.satuan === 'Kg');
-            if(existing) {
-                existing.qty += qty;
-            } else {
-                keranjangTransaksi.push({
-                    nama: selectedNameText,
-                    harga: selectedPrice,
-                    qty: qty,
-                    satuan: 'Kg'
-                });
-            }
-            switchView('view-transaksi');
-        }
-
-        // FEEDBACK / ULASAN PELANGGAN SYSTEM
-        function kirimFeedbackPelanggan() {
-            const namaEl = document.getElementById('input-feedback-nama');
-            const pesanEl = document.getElementById('input-feedback-pesan');
-            const nama = namaEl ? namaEl.value.trim() : '';
-            const pesan = pesanEl ? pesanEl.value.trim() : '';
-
-            if(!nama || !pesan) {
-                alert('Nama dan isi ulasan wajib diisi!');
-                return;
-            }
-
-            dataFeedback.unshift({ nama, pesan, tanggal: todayString });
-            localStorage.setItem('ql_feedback', JSON.stringify(dataFeedback));
-
-            if(namaEl) namaEl.value = '';
-            if(pesanEl) pesanEl.value = '';
-            alert('Ulasan pelanggan berhasil disimpan!');
-            renderListFeedback();
-        }
-
-        function renderListFeedback() {
-            const container = document.getElementById('list-feedback-container');
-            const badge = document.getElementById('badge-total-feedback');
-            if(!container) return;
-
-            if(badge) badge.innerText = dataFeedback.length + ' Ulasan';
-            container.innerHTML = '';
-
-            if(dataFeedback.length === 0) {
-                container.innerHTML = '<div class="text-center p-2 text-xs text-gray-400">Belum ada ulasan pelanggan</div>';
-                return;
-            }
-
-            dataFeedback.forEach(f => {
-                container.innerHTML += `
-                    <div class="p-2.5 bg-pink-50/50 rounded-xl border border-pink-100 text-xs space-y-1">
-                        <div class="flex justify-between font-bold text-gray-800">
-                            <span><i class="fa-solid fa-user-circle text-pink-600 mr-1"></i> ${f.nama}</span>
-                            <span class="text-[10px] text-gray-400 font-normal">${f.tanggal}</span>
-                        </div>
-                        <p class="text-gray-600 italic">"${f.pesan}"</p>
-                    </div>
-                `;
-            });
+            if(viewId === 'view-dashboard') { updateDashboardKeuangan(); }
         }
 
         function setTipePelanggan(tipe) {
@@ -960,6 +1001,40 @@
             }
         }
 
+        function pilihVoucherDiskon() {
+            let selectVoucher = document.getElementById('pilihVoucher');
+            let kode = selectVoucher ? selectVoucher.value : "0";
+            let infoVoucher = document.getElementById('infoVoucher');
+            if (infoVoucher) infoVoucher.innerText = "";
+            
+            let subtotalHitung = 0;
+            keranjangTransaksi.forEach(item => { subtotalHitung += (item.harga * item.qty); });
+
+            if (kode === "QUEENHEMAT") {
+                diskonVoucherAktif = subtotalHitung * 0.10;
+                kodeVoucherTerpakai = "QUEENHEMAT";
+                if (infoVoucher) infoVoucher.innerText = "Voucher aktif: Diskon 10%!";
+            } else if (kode === "DISKONKILAT") {
+                diskonVoucherAktif = subtotalHitung * 0.20;
+                kodeVoucherTerpakai = "DISKONKILAT";
+                if (infoVoucher) infoVoucher.innerText = "Voucher aktif: Diskon 20%!";
+            } else if (kode === "HEMAT5RIBU") {
+                diskonVoucherAktif = 5000;
+                kodeVoucherTerpakai = "HEMAT5RIBU";
+                if (infoVoucher) infoVoucher.innerText = "Voucher aktif: Potongan Rp 5.000!";
+            } else if (kode === "PROMO10RIBU") {
+                diskonVoucherAktif = 10000;
+                kodeVoucherTerpakai = "PROMO10RIBU";
+                if (infoVoucher) infoVoucher.innerText = "Voucher aktif: Potongan Rp 10.000!";
+            } else {
+                diskonVoucherAktif = 0;
+                kodeVoucherTerpakai = "";
+                if (infoVoucher) infoVoucher.innerText = "";
+            }
+            
+            hitungTotalBelanja();
+        }
+
         function renderKatalogGrid() {
             const container = document.getElementById('katalog-grid-container');
             const searchInput = document.getElementById('search-katalog-kasir');
@@ -1047,6 +1122,12 @@
             
             if(keranjangTransaksi.length === 0) {
                 container.innerHTML = '<div class="text-center p-3 text-xs text-gray-400 bg-gray-50 rounded-xl border border-dashed">Belum ada layanan ditambahkan</div>';
+                diskonVoucherAktif = 0;
+                kodeVoucherTerpakai = '';
+                const infoVoucher = document.getElementById('infoVoucher');
+                if(infoVoucher) infoVoucher.innerText = '';
+                const selectVoucher = document.getElementById('pilihVoucher');
+                if(selectVoucher) selectVoucher.value = '0';
                 hitungTotalBelanja();
                 return;
             }
@@ -1063,20 +1144,41 @@
                         <button type="button" onclick="hapusItemKeranjang(${idx})" class="text-rose-500 p-1 font-bold"><i class="fa-solid fa-trash"></i></button>
                     </div>`;
             });
-            hitungTotalBelanja();
+            pilihVoucherDiskon();
         }
 
         function hitungTotalBelanja() {
-            let total = 0;
+            let subtotal = 0;
             keranjangTransaksi.forEach(item => {
-                total += (item.harga * item.qty);
+                subtotal += (item.harga * item.qty);
             });
+
+            let selectVoucher = document.getElementById('pilihVoucher');
+            let kode = selectVoucher ? selectVoucher.value : "0";
+            if (kode === "QUEENHEMAT") {
+                diskonVoucherAktif = subtotal * 0.10;
+            } else if (kode === "DISKONKILAT") {
+                diskonVoucherAktif = subtotal * 0.20;
+            }
+
+            let total = subtotal - diskonVoucherAktif;
+            if(total < 0) total = 0;
             total = Math.round(total / 500) * 500;
 
             const lblSub = document.getElementById('lbl-subtotal');
             const lblTot = document.getElementById('lbl-total');
-            if(lblSub) lblSub.innerText = 'Rp' + total.toLocaleString('id-ID');
+            const wrapperDiskon = document.getElementById('wrapper-lbl-diskon');
+            const lblDiskon = document.getElementById('lbl-diskon');
+
+            if(lblSub) lblSub.innerText = 'Rp' + subtotal.toLocaleString('id-ID');
             if(lblTot) lblTot.innerText = 'Rp' + total.toLocaleString('id-ID');
+
+            if(diskonVoucherAktif > 0) {
+                if(wrapperDiskon) wrapperDiskon.classList.remove('hidden');
+                if(lblDiskon) lblDiskon.innerText = '-Rp' + Math.round(diskonVoucherAktif).toLocaleString('id-ID');
+            } else {
+                if(wrapperDiskon) wrapperDiskon.classList.add('hidden');
+            }
 
             let bayarMasuk = total;
             if(selectedPayment === 'Member') {
@@ -1092,23 +1194,31 @@
             return total;
         }
 
-        function tambahPelanggan() {
+        async function tambahPelanggan() {
+            if (!supabaseClient) return;
             const nameEl = document.getElementById('new-member-name');
             const phoneEl = document.getElementById('new-member-phone');
             const saldoEl = document.getElementById('new-member-saldo');
 
-            const nama = nameEl ? nameEl.value : '';
-            const telepon = phoneEl ? phoneEl.value : '';
+            const nama = nameEl ? nameEl.value.trim() : '';
+            const telepon = phoneEl ? phoneEl.value.trim() : '';
             const saldo = saldoEl ? (parseFloat(saldoEl.value) || 0) : 0;
 
-            if(!nama || !telepon) { alert('Isi nama dan telepon member dengan benar!'); return; }
-            dataPelanggan.push({ nama, telepon, saldo });
-            localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+            if(!nama) { alert('Nama member wajib diisi!'); if(nameEl) nameEl.focus(); return; }
             
+            const newMember = { nama, telepon, saldo };
+            const { data, error } = await supabaseClient.from('pelanggan').insert([newMember]).select();
+            
+            if(error) {
+                alert('Gagal menyimpan member ke Cloud: ' + error.message);
+                return;
+            }
+
+            dataPelanggan.push(newMember);
             if(nameEl) nameEl.value = '';
             if(phoneEl) phoneEl.value = '';
             if(saldoEl) saldoEl.value = '50000';
-            alert('Member baru & Kuota Saldo berhasil disimpan!');
+            alert('Member baru & Kuota Saldo berhasil disimpan ke Cloud!');
             renderDaftarPelanggan();
         }
 
@@ -1127,7 +1237,7 @@
                 container.innerHTML += `
                     <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl text-sm">
                         <div>
-                            <span class="font-bold text-gray-800">${p.nama}</span> <span class="text-xs text-gray-500">(${p.telepon})</span><br>
+                            <span class="font-bold text-gray-800">${p.nama}</span> <span class="text-xs text-gray-500">(${p.telepon || '-'})</span><br>
                             <span class="text-xs text-pink-600 font-semibold">Saldo Kuota: Rp${saldoVal.toLocaleString('id-ID')}</span>
                         </div>
                         <div class="space-x-1 flex items-center">
@@ -1139,13 +1249,14 @@
             });
         }
 
-        function topUpSaldo(index) {
+        async function topUpSaldo(index) {
+            if (!supabaseClient) return;
             let tambahan = prompt(`Masukkan jumlah top up saldo kuota untuk ${dataPelanggan[index].nama}:`, '50000');
             if(tambahan !== null) {
                 let nilai = parseFloat(tambahan);
                 if(!isNaN(nilai) && nilai > 0) {
                     dataPelanggan[index].saldo = (Number(dataPelanggan[index].saldo) || 0) + nilai;
-                    localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                    await supabaseClient.from('pelanggan').update({ saldo: dataPelanggan[index].saldo }).eq('nama', dataPelanggan[index].nama);
                     renderDaftarPelanggan();
                     alert(`Top up berhasil! Saldo kuota ${dataPelanggan[index].nama} sekarang Rp${Number(dataPelanggan[index].saldo).toLocaleString('id-ID')}`);
                 } else {
@@ -1154,44 +1265,54 @@
             }
         }
 
-        function resetSaldoMember(index) {
+        async function resetSaldoMember(index) {
+            if (!supabaseClient) return;
             if(confirm(`Yakin ingin mereset saldo kuota ${dataPelanggan[index].nama} menjadi Rp0?`)) {
                 dataPelanggan[index].saldo = 0;
-                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                await supabaseClient.from('pelanggan').update({ saldo: 0 }).eq('nama', dataPelanggan[index].nama);
                 renderDaftarPelanggan();
                 alert(`Saldo kuota ${dataPelanggan[index].nama} berhasil direset menjadi Rp0.`);
             }
         }
 
-        function resetSemuaSaldoMember() {
+        async function resetSemuaSaldoMember() {
+            if (!supabaseClient) return;
             if(confirm('PERINGATAN: Yakin ingin mereset saldo kuota SEMUA member menjadi Rp0?')) {
-                dataPelanggan.forEach(p => { p.saldo = 0; });
-                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                for(let p of dataPelanggan) {
+                    p.saldo = 0;
+                    await supabaseClient.from('pelanggan').update({ saldo: 0 }).eq('nama', p.nama);
+                }
                 renderDaftarPelanggan();
                 alert('Semua saldo kuota member berhasil direset menjadi Rp0.');
             }
         }
 
-        function hapusPelanggan(index) {
+        async function hapusPelanggan(index) {
+            if (!supabaseClient) return;
             if(confirm('Hapus member ini?')) {
+                let p = dataPelanggan[index];
+                await supabaseClient.from('pelanggan').delete().eq('nama', p.nama);
                 dataPelanggan.splice(index, 1);
-                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
                 renderDaftarPelanggan();
             }
         }
 
-        function tambahLayananBaru() {
+        async function tambahLayananBaru() {
+            if (!supabaseClient) return;
             const nameEl = document.getElementById('new-service-name');
             const priceEl = document.getElementById('new-service-price');
             const nama = nameEl ? nameEl.value : '';
             const harga = priceEl ? parseFloat(priceEl.value) : NaN;
 
             if(!nama || isNaN(harga)) { alert('Isi nama dan harga layanan dengan benar!'); return; }
-            dataLayanan.push({ nama, harga });
-            localStorage.setItem('ql_layanan', JSON.stringify(dataLayanan));
+            
+            const newService = { nama, harga };
+            await supabaseClient.from('layanan').insert([newService]);
+            dataLayanan.push(newService);
+
             if(nameEl) nameEl.value = '';
             if(priceEl) priceEl.value = '';
-            alert('Layanan baru berhasil ditambahkan!');
+            alert('Layanan baru berhasil ditambahkan ke Cloud!');
             renderDaftarLayanan();
         }
 
@@ -1208,42 +1329,50 @@
             });
         }
 
-        function hapusLayanan(index) {
+        async function hapusLayanan(index) {
+            if (!supabaseClient) return;
             if(confirm('Hapus layanan ini?')) {
+                let l = dataLayanan[index];
+                await supabaseClient.from('layanan').delete().eq('nama', l.nama);
                 dataLayanan.splice(index, 1);
-                localStorage.setItem('ql_layanan', JSON.stringify(dataLayanan));
                 renderDaftarLayanan();
             }
         }
 
-        function tambahPengeluaran() {
+        async function tambahPengeluaran() {
+            if (!supabaseClient) return;
             const nameEl = document.getElementById('exp-name');
             const amountEl = document.getElementById('exp-amount');
             const nama = nameEl ? nameEl.value : '';
             const amount = amountEl ? parseFloat(amountEl.value) : NaN;
 
             if(!nama || isNaN(amount)) { alert('Isi data pengeluaran dengan benar!'); return; }
-            dataPengeluaran.push({ nama, amount, tanggal: todayString });
-            localStorage.setItem('ql_expense', JSON.stringify(dataPengeluaran));
+            
+            const newExp = { nama, amount, tanggal: todayString };
+            await supabaseClient.from('pengeluaran').insert([newExp]);
+            dataPengeluaran.push(newExp);
+
             if(nameEl) nameEl.value = '';
             if(amountEl) amountEl.value = '';
-            alert('Pengeluaran berhasil dicatat!');
+            alert('Pengeluaran berhasil dicatat ke Cloud!');
             updateDashboardKeuangan();
         }
 
-        function resetDataKeuangan() {
-            if(confirm('PERINGATAN KERAS: Aksi ini akan mereset dan menghapus SEMUA riwayat order/pemasukan, metode pembayaran, serta riwayat pengeluaran toko menjadi Rp0. Lanjutkan?')) {
+        async function resetDataKeuangan() {
+            if (!supabaseClient) return;
+            if(confirm('PERINGATAN KERAS: Aksi ini akan mereset dan menghapus SEMUA riwayat order/pemasukan serta pengeluaran toko dari Cloud. Lanjutkan?')) {
+                await supabaseClient.from('orders').delete().neq('id', 0);
+                await supabaseClient.from('pengeluaran').delete().neq('id', 0);
                 dataOrder = [];
                 dataPengeluaran = [];
-                localStorage.removeItem('ql_order');
-                localStorage.removeItem('ql_expense');
                 updateDashboardKeuangan();
                 if(chartInstance) renderChartAnalitik();
-                alert('Semua data keuangan dan transaksi toko berhasil direset bersih!');
+                alert('Semua data keuangan dan transaksi toko berhasil direset bersih dari Cloud!');
             }
         }
 
-        function prosesPembayaran() {
+        async function prosesPembayaran() {
+            if (!supabaseClient) return;
             if(keranjangTransaksi.length === 0) {
                 alert('Belum ada layanan yang dimasukkan ke keranjang nota!');
                 return;
@@ -1257,7 +1386,7 @@
                 const selectPelanggan = document.getElementById('select-pelanggan');
                 nama = selectPelanggan ? selectPelanggan.value : '';
                 pelangganObj = dataPelanggan.find(p => p.nama === nama);
-                telepon = pelangganObj ? pelangganObj.telepon : '08123456789';
+                telepon = pelangganObj && pelangganObj.telepon ? pelangganObj.telepon : '08123456789';
             } else {
                 const inputNamaUmum = document.getElementById('input-nama-umum');
                 const inputWaUmum = document.getElementById('input-wa-umum');
@@ -1275,6 +1404,17 @@
             }
             
             let total = hitungTotalBelanja();
+            let diskonFinal = diskonVoucherAktif;
+            let kodeVoucherFinal = kodeVoucherTerpakai;
+            let estimasiSelesaiText = hitungEstimasiSelesai();
+            
+            const inputTglOrder = document.getElementById('input-tanggal-order');
+            let tglOrderFormatted = todayString;
+            if (inputTglOrder && inputTglOrder.value) {
+                let dObj = new Date(inputTglOrder.value);
+                tglOrderFormatted = dObj.toLocaleDateString('id-ID', optionsDate);
+            }
+
             const catatanEl = document.getElementById('input-catatan');
             const catatan = catatanEl ? catatanEl.value : '';
 
@@ -1290,7 +1430,7 @@
                     return;
                 }
                 pelangganObj.saldo = currentSaldo - total;
-                localStorage.setItem('ql_pelanggan', JSON.stringify(dataPelanggan));
+                await supabaseClient.from('pelanggan').update({ saldo: pelangganObj.saldo }).eq('nama', pelangganObj.nama);
                 bayar = total;
                 statusBayar = 'LUNAS';
             } else if(selectedPayStatus === 'DP') {
@@ -1312,33 +1452,55 @@
             const invoiceId = 'QL-' + Date.now().toString().slice(-6);
 
             const newOrder = {
-                id: invoiceId,
+                invoice_id: invoiceId,
                 nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
                 telepon: telepon,
+                items: JSON.stringify(keranjangTransaksi),
+                diskon: diskonFinal,
+                kode_voucher: kodeVoucherFinal,
+                total: total,
+                bayar: bayar,
+                sisa: sisa,
+                status_bayar: statusBayar,
+                status: 'DIPROSES',
+                metode: selectedPayment,
+                tanggal: tglOrderFormatted,
+                estimasi: estimasiSelesaiText,
+                catatan: catatan
+            };
+
+            await supabaseClient.from('orders').insert([newOrder]);
+
+            const localOrderObj = {
+                id: invoiceId,
+                nama: newOrder.nama,
+                telepon: telepon,
                 items: [...keranjangTransaksi],
+                diskon: diskonFinal,
+                kodeVoucher: kodeVoucherFinal,
                 total: total,
                 bayar: bayar,
                 sisa: sisa,
                 statusBayar: statusBayar,
                 status: 'DIPROSES',
                 metode: selectedPayment,
-                tanggal: todayString,
+                tanggal: tglOrderFormatted,
+                estimasi: estimasiSelesaiText,
                 catatan: catatan
             };
 
-            lastCreatedOrder = newOrder;
-            dataOrder.unshift(newOrder);
-            localStorage.setItem('ql_order', JSON.stringify(dataOrder));
+            lastCreatedOrder = localOrderObj;
+            dataOrder.unshift(localOrderObj);
 
-            // Set Data ke Nota Tampilan
             document.getElementById('nota-store-name').innerText = appSettings.storeName;
             document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
             document.getElementById('nota-logo-img').src = appSettings.logoUrl;
             document.getElementById('nota-footer-message').innerHTML = appSettings.footerText.replace(/\n/g, '<br>');
 
             document.getElementById('nota-id').innerText = invoiceId;
-            document.getElementById('nota-tanggal').innerText = todayString;
-            document.getElementById('nota-pelanggan').innerText = newOrder.nama;
+            document.getElementById('nota-tanggal').innerText = tglOrderFormatted;
+            document.getElementById('nota-estimasi-selesai').innerText = estimasiSelesaiText;
+            document.getElementById('nota-pelanggan').innerText = localOrderObj.nama;
             
             const notaItemsContainer = document.getElementById('nota-items-container');
             notaItemsContainer.innerHTML = '';
@@ -1350,6 +1512,14 @@
                         <span>Rp${sub.toLocaleString('id-ID')}</span>
                     </div>`;
             });
+
+            const notaDiskonWrap = document.getElementById('nota-diskon-wrapper');
+            if(diskonFinal > 0) {
+                document.getElementById('nota-diskon-text').innerText = `-Rp${Math.round(diskonFinal).toLocaleString('id-ID')} (${kodeVoucherFinal})`;
+                if(notaDiskonWrap) notaDiskonWrap.classList.remove('hidden');
+            } else {
+                if(notaDiskonWrap) notaDiskonWrap.classList.add('hidden');
+            }
 
             document.getElementById('nota-grandtotal').innerText = 'Rp' + total.toLocaleString('id-ID');
             document.getElementById('nota-bayar').innerText = 'Rp' + Math.round(bayar).toLocaleString('id-ID');
@@ -1381,8 +1551,14 @@
             }
 
             keranjangTransaksi = [];
+            diskonVoucherAktif = 0;
+            kodeVoucherTerpakai = '';
             selectedKatalogItem = null;
             document.getElementById('selected-service-banner').classList.add('hidden');
+            const infoVoucher = document.getElementById('infoVoucher');
+            if(infoVoucher) infoVoucher.innerText = '';
+            const selectVoucher = document.getElementById('pilihVoucher');
+            if(selectVoucher) selectVoucher.value = '0';
             if(catatanEl) catatanEl.value = '';
             const inputNamaUmum = document.getElementById('input-nama-umum');
             const inputWaUmum = document.getElementById('input-wa-umum');
@@ -1392,14 +1568,15 @@
             switchView('view-nota');
         }
 
-        function lunasiOrder(id) {
+        async function lunasiOrder(id) {
+            if (!supabaseClient) return;
             const o = dataOrder.find(item => item.id === id);
             if(o) {
                 if(confirm(`Lunasi sisa pembayaran Rp${Number(o.sisa).toLocaleString('id-ID')} untuk nota ${o.id}?`)) {
                     o.bayar = o.total;
                     o.sisa = 0;
                     o.statusBayar = 'LUNAS';
-                    localStorage.setItem('ql_order', JSON.stringify(dataOrder));
+                    await supabaseClient.from('orders').update({ bayar: o.total, sisa: 0, status_bayar: 'LUNAS' }).eq('invoice_id', o.id);
                     renderDaftarOrder();
                     alert('Pembayaran berhasil dilunasi!');
                 }
@@ -1415,7 +1592,7 @@
             const o = dataOrder.find(item => item.id === id);
             if(!o) return;
 
-            let phoneClean = o.telepon.replace(/^0/, '62');
+            let phoneClean = o.telepon ? o.telepon.replace(/^0/, '62') : '628123456789';
             let itemStr = '';
             if(o.items && o.items.length > 0) {
                 o.items.forEach(i => {
@@ -1423,7 +1600,9 @@
                 });
             }
 
-            let pesan = `Halo Kak *${o.nama}*,\n\nTerima kasih telah mempercayakan cucian Anda di *${appSettings.storeName}* 👕✨\n\n*Detail Nota (${o.id}):* \n${itemStr}\n*Total Tagihan: Rp${Number(o.total).toLocaleString('id-ID')}*\n• Dibayar: Rp${Number(o.bayar).toLocaleString('id-ID')}\n${o.sisa > 0 ? '• Sisa Tagihan: *Rp' + Number(o.sisa).toLocaleString('id-ID') + '*\n• Status Bayar: *BELUM LUNAS*\n' : '• Status Bayar: *LUNAS*\n'}\n• Metode: ${o.metode === 'Member' ? 'Potong Saldo Member' : o.metode}\n• Status Cucian: *${o.status}*\n${o.catatan ? '• Catatan: ' + o.catatan + '\n' : ''}\n${appSettings.footerText} 🙏`;
+            let diskonStr = o.diskon > 0 ? `• Diskon Voucher (${o.kodeVoucher}): -Rp${Number(o.diskon).toLocaleString('id-ID')}\n` : '';
+
+            let pesan = `Halo Kak *${o.nama}*,\n\nTerima kasih telah mempercayakan cucian Anda di *${appSettings.storeName}* 👕✨\n\n*Detail Nota (${o.id}):* \n${itemStr}\n${diskonStr}*Total Tagihan: Rp${Number(o.total).toLocaleString('id-ID')}*\n• Tanggal Masuk: ${o.tanggal}\n• Estimasi Selesai: *${o.estimasi || '-'}*\n• Dibayar: Rp${Number(o.bayar).toLocaleString('id-ID')}\n${o.sisa > 0 ? '• Sisa Tagihan: *Rp' + Number(o.sisa).toLocaleString('id-ID') + '*\n• Status Bayar: *BELUM LUNAS*\n' : '• Status Bayar: *LUNAS*\n'}\n• Metode: ${o.metode === 'Member' ? 'Potong Saldo Member' : o.metode}\n• Status Cucian: *${o.status}*\n${o.catatan ? '• Catatan: ' + o.catatan + '\n' : ''}\n${appSettings.footerText} 🙏`;
 
             let url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(pesan)}`;
             window.open(url, '_blank');
@@ -1485,16 +1664,20 @@
                     });
                 }
 
+                let badgeVoucherInfo = o.diskon > 0 ? `<div class="text-xs text-pink-600 font-semibold">• Diskon Voucher (${o.kodeVoucher}): -Rp${Number(o.diskon).toLocaleString('id-ID')}</div>` : '';
+
                 container.innerHTML += `
                     <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2 border-l-4 ${borderColor}">
                         <div class="flex justify-between text-xs text-gray-500">
-                            <span>${o.id}</span>
+                            <span>${o.id} - ${o.tanggal || ''}</span>
                             <span class="${badgeColor} font-bold px-2 py-0.5 rounded">${o.status}</span>
                         </div>
                         <div class="font-bold text-gray-800 text-sm">${o.nama}</div>
                         <div class="bg-gray-50 p-2 rounded-xl space-y-0.5">
                             ${itemSummaryHtml}
+                            ${badgeVoucherInfo}
                         </div>
+                        <div class="text-xs text-pink-600 font-medium">Estimasi Selesai: <strong>${o.estimasi || '-'}</strong></div>
                         <div class="flex justify-between items-center text-xs pt-1">
                             <span class="text-gray-600 font-semibold">Total: Rp${totalVal.toLocaleString('id-ID')} (${o.metode})</span>
                             ${badgeBayar}
@@ -1521,22 +1704,24 @@
             if(csel) csel.innerText = selesai;
         }
 
-        function ubahStatus(id) {
+        async function ubahStatus(id) {
+            if (!supabaseClient) return;
             const order = dataOrder.find(o => o.id === id);
             if(order) {
                 if(order.status === 'DIPROSES') order.status = 'SIAP DIAMBIL';
                 else if(order.status === 'SIAP DIAMBIL') order.status = 'SELESAI';
                 else order.status = 'DIPROSES';
                 
-                localStorage.setItem('ql_order', JSON.stringify(dataOrder));
+                await supabaseClient.from('orders').update({ status: order.status }).eq('invoice_id', order.id);
                 renderDaftarOrder();
             }
         }
 
-        function hapusOrder(id) {
+        async function hapusOrder(id) {
+            if (!supabaseClient) return;
             if(confirm('Hapus data order ini?')) {
+                await supabaseClient.from('orders').delete().eq('invoice_id', id);
                 dataOrder = dataOrder.filter(o => o.id !== id);
-                localStorage.setItem('ql_order', JSON.stringify(dataOrder));
                 renderDaftarOrder();
             }
         }
@@ -1592,12 +1777,12 @@
             let totalPemasukan = 0;
             let totalPengeluaran = 0;
 
-            dataOrder.forEach(o => totalPemasukan += (Number(o.bayar) || 0));
-            dataPengeluaran.forEach(e => totalPengeluaran += (Number(e.amount) || 0));
+            dataOrder.forEach(o => { totalPemasukan += (Number(o.bayar) || 0); });
+            dataPengeluaran.forEach(e => { totalPengeluaran += (Number(e.amount) || 0); });
 
-            const canvasEl = document.getElementById('chartAnalitik');
-            if(!canvasEl) return;
-            const ctx = canvasEl.getContext('2d');
+            const ctx = document.getElementById('chartAnalitik');
+            if(!ctx) return;
+
             if(chartInstance) {
                 chartInstance.destroy();
             }
@@ -1605,11 +1790,12 @@
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Pemasukan Masuk', 'Pengeluaran Toko'],
+                    labels: ['Pemasukan Kas', 'Pengeluaran Toko'],
                     datasets: [{
-                        label: 'Nominal (Rp)',
+                        label: 'Total (Rp)',
                         data: [totalPemasukan, totalPengeluaran],
                         backgroundColor: ['#10b981', '#f43f5e'],
+                        borderWidth: 0,
                         borderRadius: 8
                     }]
                 },
@@ -1620,37 +1806,34 @@
                         legend: { display: false }
                     },
                     scales: {
-                        y: { beginAtZero: true }
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } }
+                        }
                     }
                 }
             });
         }
 
         function cetakLaporanKeuangan() {
-            let totalPendapatanMasuk = 0;
+            let totalPemasukan = 0;
             let totalPengeluaran = 0;
 
-            dataOrder.forEach(o => totalPendapatanMasuk += (Number(o.bayar) || 0));
-            dataPengeluaran.forEach(e => totalPengeluaran += (Number(e.amount) || 0));
-            let saldoBersih = totalPendapatanMasuk - totalPengeluaran;
+            dataOrder.forEach(o => { totalPemasukan += (Number(o.bayar) || 0); });
+            dataPengeluaran.forEach(e => { totalPengeluaran += (Number(e.amount) || 0); });
+            let saldoBersih = totalPemasukan - totalPengeluaran;
 
             document.getElementById('laporan-store-name').innerText = appSettings.storeName;
-            const lapTgl = document.getElementById('laporan-tanggal-cetak');
-            const lapPem = document.getElementById('lap-tot-pemasukan');
-            const lapExp = document.getElementById('lap-tot-pengeluaran');
-            const lapBersih = document.getElementById('lap-tot-bersih');
-
-            if(lapTgl) lapTgl.innerText = 'Periode: ' + todayString;
-            if(lapPem) lapPem.innerText = 'Rp' + totalPendapatanMasuk.toLocaleString('id-ID');
-            if(lapExp) lapExp.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            if(lapBersih) lapBersih.innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
+            document.getElementById('laporan-tanggal-cetak').innerText = 'Dicetak pada: ' + todayString;
+            document.getElementById('lap-tot-pemasukan').innerText = 'Rp' + totalPemasukan.toLocaleString('id-ID');
+            document.getElementById('lap-tot-pengeluaran').innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
+            document.getElementById('lap-tot-bersih').innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
 
             switchView('view-laporan-cetak');
         }
-
-        updateDashboardKeuangan();
-        initKalkulatorDropdown();
-        renderListFeedback();
     </script>
 </body>
 </html>
