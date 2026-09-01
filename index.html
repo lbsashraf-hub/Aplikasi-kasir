@@ -1946,92 +1946,114 @@
             return ' '.repeat(left) + text;
         }
 
-        function twoColumns(left, right, width = 32) {
+                function twoColumns(left, right, width = 32) {
             left = escPosText(left);
             right = escPosText(right);
-            if (right.length >= width) right = right.substring(0, width - 1);
-            const maxLeft = width - right.length - 1;
-            if (left.length > maxLeft) left = left.substring(0, maxLeft);
-            return left + ' '.repeat(Math.max(1, width - left.length - right.length)) + right;
-        }
-
-        function buildNotaEscPos() {
-            const o = lastCreatedOrder;
-            if (!o) throw new Error('Belum ada nota yang dapat dicetak.');
-
-            const width = 32; // 58mm thermal printer, font normal
-            const lines = [];
-            lines.push(centerLine(appSettings.storeName, width));
-            lines.push(centerLine('Premium Care Service', width));
-            lines.push(centerLine(appSettings.storeAddress, width));
-            lines.push('--------------------------------');
-            lines.push(twoColumns('No Nota', o.id, width));
-            lines.push(twoColumns('Tanggal', o.tanggal, width));
-            lines.push(twoColumns('Pelanggan', o.nama, width));
-            lines.push('--------------------------------');
-
-            (o.items || []).forEach(item => {
-                const qty = item.qty + ' ' + item.satuan;
-                const sub = 'Rp' + (Number(item.harga || 0) * Number(item.qty || 0)).toLocaleString('id-ID');
-                lines.push(escPosText(item.nama));
-                lines.push(twoColumns('  ' + qty, sub, width));
-            });
-
-            if (Number(o.diskon || 0) > 0) {
-                lines.push(twoColumns('Diskon ' + (o.kodeVoucher || ''), '-Rp' + Math.round(o.diskon).toLocaleString('id-ID'), width));
+            if (left.length + right.length + 1 > width) {
+                left = left.substring(0, width - right.length - 1);
             }
-            lines.push('--------------------------------');
-            lines.push(twoColumns('TOTAL', 'Rp' + Number(o.total || 0).toLocaleString('id-ID'), width));
-            lines.push(twoColumns('DIBAYAR / DP', 'Rp' + Number(o.bayar || 0).toLocaleString('id-ID'), width));
-            if (Number(o.sisa || 0) > 0) {
-                lines.push(twoColumns('SISA', 'Rp' + Number(o.sisa).toLocaleString('id-ID'), width));
-            }
-            lines.push(twoColumns('Metode', o.metode === 'Member' ? 'Potong Saldo Member' : (o.metode || 'Cash'), width));
-            lines.push(centerLine(o.statusBayar === 'BELUM LUNAS' ? 'STATUS: BELUM LUNAS' : 'STATUS: LUNAS', width));
-            lines.push('');
-            lines.push(centerLine('Terima kasih telah mempercayakan', width));
-            lines.push(centerLine('cucian Anda di Queen Laundry', width));
-            lines.push('');
-            lines.push('');
-            return lines.join('\n');
-        }
-
-        async function writeBluetoothData(data) {
-            if (!btPrinterCharacteristic) throw new Error('Printer Bluetooth belum terhubung.');
-            const encoder = new TextEncoder();
-            const bytes = data instanceof Uint8Array ? data : encoder.encode(String(data));
-            const chunkSize = 180;
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-                const chunk = bytes.slice(i, i + chunkSize);
-                if (btPrinterCharacteristic.properties.writeWithoutResponse && btPrinterCharacteristic.writeValueWithoutResponse) {
-                    await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
-                } else {
-                    await btPrinterCharacteristic.writeValue(chunk);
-                }
-                await new Promise(resolve => setTimeout(resolve, 20));
-            }
+            const spaces = width - left.length - right.length;
+            return left + ' '.repeat(Math.max(1, spaces)) + right;
         }
 
         async function cetakNotaBluetooth() {
-            try {
-                if (!btPrinterCharacteristic) {
+            if (!lastCreatedOrder) {
+                alert('Belum ada data transaksi terakhir yang bisa dicetak!');
+                return;
+            }
+            if (!btPrinterCharacteristic) {
+                if (confirm('Printer Bluetooth belum terhubung. Hubungkan sekarang?')) {
                     await hubungkanPrinterBluetooth();
-                    if (!btPrinterCharacteristic) return;
                 }
-                // ESC/POS: initialize, center header, normal text, cut (if supported).
-                const header = new Uint8Array([0x1B,0x40,0x1B,0x61,0x01,0x1B,0x21,0x00]);
-                const encoder = new TextEncoder();
-                await writeBluetoothData(header);
-                await writeBluetoothData(encoder.encode(buildNotaEscPos()));
-                await writeBluetoothData(new Uint8Array([0x1D,0x56,0x00]));
-                updateBluetoothStatus((btPrinterDevice && btPrinterDevice.name) || 'Printer', true);
-                alert('Nota berhasil dikirim ke printer Bluetooth.');
-            } catch (error) {
-                console.error('Cetak Bluetooth:', error);
-                alert('Gagal mencetak via Bluetooth: ' + (error.message || error));
+                if (!btPrinterCharacteristic) return;
+            }
+
+            try {
+                const o = lastCreatedOrder;
+                let commands = [];
+                
+                // Inisialisasi printer (ESC @)
+                commands.push(new Uint8Array([0x1B, 0x40]));
+                
+                // Header (Centered, Bold)
+                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Align Center
+                commands.push(new Uint8Array([0x1B, 0x45, 0x01])); // Bold On
+                commands.push(new TextEncoder().encode((appSettings.storeName || 'QUEEN LAUNDRY') + '\n'));
+                commands.push(new Uint8Array([0x1B, 0x45, 0x00])); // Bold Off
+                commands.push(new TextEncoder().encode('Premium Care Service\n'));
+                commands.push(new TextEncoder().encode((appSettings.storeAddress || 'Singaparna, Tasikmalaya') + '\n'));
+                commands.push(new TextEncoder().encode('--------------------------------\n'));
+
+                // Info Nota (Left aligned)
+                commands.push(new Uint8Array([0x1B, 0x61, 0x00])); // Align Left
+                commands.push(new TextEncoder().encode(twoColumns('No Nota:', o.id) + '\n'));
+                commands.push(new TextEncoder().encode(twoColumns('Tanggal:', o.tanggal) + '\n'));
+                commands.push(new TextEncoder().encode(twoColumns('Estimasi:', o.estimasi || '-') + '\n'));
+                commands.push(new TextEncoder().encode(twoColumns('Pelanggan:', o.nama) + '\n'));
+                commands.push(new TextEncoder().encode('--------------------------------\n'));
+
+                // Items
+                commands.push(new TextEncoder().encode('Rincian Layanan:\n'));
+                if (o.items && o.items.length > 0) {
+                    o.items.forEach(i => {
+                        let sub = i.harga * i.qty;
+                        commands.push(new TextEncoder().encode(`- ${i.nama}\n`));
+                        commands.push(new TextEncoder().encode(twoColumns(`  ${i.qty} ${i.satuan} x ${i.harga.toLocaleString('id-ID')}`, `Rp${sub.toLocaleString('id-ID')}`) + '\n'));
+                    });
+                }
+                if (o.diskon > 0) {
+                    commands.push(new TextEncoder().encode(twoColumns(`Diskon (${o.kodeVoucher})`, `-Rp${Number(o.diskon).toLocaleString('id-ID')}`) + '\n'));
+                }
+                commands.push(new TextEncoder().encode('--------------------------------\n'));
+
+                // Totals & Status
+                commands.push(new TextEncoder().encode(twoColumns('Total Biaya:', 'Rp' + Number(o.total).toLocaleString('id-ID')) + '\n'));
+                commands.push(new TextEncoder().encode(twoColumns('Dibayar / DP:', 'Rp' + Number(o.bayar).toLocaleString('id-ID')) + '\n'));
+                if (o.sisa > 0) {
+                    commands.push(new TextEncoder().encode(twoColumns('Sisa Tagihan:', 'Rp' + Number(o.sisa).toLocaleString('id-ID')) + '\n'));
+                }
+                commands.push(new TextEncoder().encode(twoColumns('Metode Bayar:', o.metode === 'Member' ? 'Potong Saldo' : o.metode) + '\n'));
+                commands.push(new TextEncoder().encode('--------------------------------\n'));
+
+                commands.push(new Uint8Array([0x1B, 0x61, 0x01])); // Align Center
+                commands.push(new Uint8Array([0x1B, 0x45, 0x01])); // Bold On
+                let statusText = o.statusBayar === 'LUNAS' ? 'STATUS: LUNAS' : 'STATUS: BELUM LUNAS';
+                commands.push(new TextEncoder().encode(statusText + '\n'));
+                commands.push(new Uint8Array([0x1B, 0x45, 0x00])); // Bold Off
+                commands.push(new TextEncoder().encode('\n'));
+                
+                let cleanFooter = (appSettings.footerText || 'Terima kasih telah mempercayakan cucian Anda').replace(/<br>/g, '\n');
+                commands.push(new TextEncoder().encode(cleanFooter + '\n\n\n'));
+
+                // Feed & Cut (jika didukung printer)
+                commands.push(new Uint8Array([0x1D, 0x56, 0x42, 0x00]));
+
+                // Gabungkan semua Uint8Array menjadi satu buffer pengiriman
+                let totalLength = commands.reduce((acc, val) => acc + val.length, 0);
+                let payload = new Uint8Array(totalLength);
+                let offset = 0;
+                for (let cmd of commands) {
+                    payload.set(cmd, offset);
+                    offset += cmd.length;
+                }
+
+                // Kirim data secara bertahap (chunking) agar kompatibel dengan berbagai printer thermal Bluetooth
+                const CHUNK_SIZE = 512;
+                for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+                    let chunk = payload.slice(i, i + CHUNK_SIZE);
+                    if (btPrinterCharacteristic.properties.writeWithoutResponse) {
+                        await btPrinterCharacteristic.writeValueWithoutResponse(chunk);
+                    } else {
+                        await btPrinterCharacteristic.writeValue(chunk);
+                    }
+                }
+
+                alert('Nota berhasil dikirim ke Printer Bluetooth!');
+            } catch (err) {
+                console.error('Gagal mencetak via Bluetooth:', err);
+                alert('Gagal mencetak: ' + (err.message || err));
             }
         }
-
     </script>
 </body>
 </html>
