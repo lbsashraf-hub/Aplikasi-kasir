@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -117,6 +118,47 @@
 
 <body class="bg-gray-100 font-sans antialiased pb-24">
 
+    <!-- MODAL PIN RAHASIA -->
+    <div id="pin-modal" class="fixed inset-0 bg-black/80 z-[999999] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border-4 border-pink-500">
+            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-gray-800">Verifikasi PIN Rahasia</h2>
+                <p class="text-xs text-gray-500 mt-1">Masukkan PIN admin untuk mengakses menu Pengaturan Toko.</p>
+            </div>
+            <div>
+                <input type="password" id="input-pin-rahasia" placeholder="Masukkan PIN (Default: queenadmin123)" class="w-full p-3 border rounded-xl text-center text-sm bg-gray-50 focus:outline-pink-600 tracking-widest font-bold">
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="tutupPinModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition">Batal</button>
+                <button onclick="verifikasiPinRahasia()" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BLOKIR / PERINGATAN EXPIRED APLIKASI -->
+    <div id="expired-modal" class="fixed inset-0 bg-black/80 z-[999999] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border-4 border-rose-500 animate-bounce-short">
+            <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-inner">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h2 id="expired-title" class="text-lg font-bold text-gray-800">Masa Aktif Aplikasi Habis</h2>
+                <p id="expired-desc" class="text-xs text-gray-500 mt-1">Akses penggunaan Queen Laundry telah berakhir. Silakan hubungi Developer A. Ashraf untuk memperpanjang akses aplikasi.</p>
+            </div>
+            <div class="bg-rose-50 p-3 rounded-2xl border border-rose-100 text-xs text-rose-700 font-semibold" id="expired-date-info">
+                Batas Aktif: -
+            </div>
+            <div class="pt-2">
+                <a id="btn-hubungi-dev" href="https://wa.me/6285770246502?text=Halo%20Admin,%20saya%20ingin%20memperpanjang%20masa%20aktif%20aplikasi%20Queen%20Laundry" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition text-xs block">
+                    <i class="fa-brands fa-whatsapp mr-1 text-sm"></i> HUBUNGI DEVELOPER (WA)
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div id="splash-screen">
         <img id="splash-logo-display" src="logo-queen.png" alt="Queen Laundry Logo" class="splash-logo-img">
         <div class="splash-loading-text">This Application Was Created By <b>Ashraf NR</b></div>
@@ -139,7 +181,7 @@
             <div class="bg-pink-700 p-2 rounded-full px-3 text-sm font-semibold shadow-inner hidden sm:flex">
                 <i class="fa-solid fa-wallet mr-1"></i> <span id="header-pendapatan">Rp 0</span>
             </div>
-            <button onclick="switchView('view-pengaturan')" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-xs transition shadow" title="Pengaturan">
+            <button onclick="bukaMenuPengaturan()" class="bg-pink-700 hover:bg-pink-800 p-2.5 rounded-full text-white text-xs transition shadow" title="Pengaturan">
                 <i class="fa-solid fa-gear"></i>
             </button>
         </div>
@@ -178,7 +220,7 @@
                 <button onclick="switchView('view-keuangan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
                     <i class="fa-solid fa-wallet w-5 text-center text-pink-600"></i><span>Keuangan & Pengeluaran</span>
                 </button>
-                <button onclick="switchView('view-pengaturan'); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
+                <button onclick="bukaMenuPengaturan(); toggleSidebar();" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-pink-50 hover:text-pink-600 text-gray-700 transition">
                     <i class="fa-solid fa-gear w-5 text-center text-pink-600"></i><span>Pengaturan Toko & Nota</span>
                 </button>
             </div>
@@ -192,6 +234,15 @@
     <main class="max-w-md mx-auto p-4">
 
         <section id="view-dashboard" class="view-section space-y-4">
+            <!-- BANNER PERINGATAN MASA AKTIF DI DASHBOARD -->
+            <div id="dashboard-expired-warning" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 space-y-2 shadow-sm">
+                <div class="flex items-center space-x-2 font-bold text-xs uppercase tracking-wider">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+                    <span>Peringatan Masa Aktif Aplikasi</span>
+                </div>
+                <p id="dashboard-expired-text" class="text-xs">Masa aktif aplikasi Anda akan segera berakhir.</p>
+            </div>
+
             <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl p-5 shadow-lg">
                 <p class="text-xs uppercase tracking-wider opacity-80">Saldo Kas Bersih</p>
                 <h2 class="text-2xl font-bold mt-1" id="dash-pendapatan">Rp 0</h2>
@@ -551,6 +602,26 @@
                         <textarea id="setting-footer-text" rows="3" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600" placeholder="Terima kasih telah mempercayakan cucian Anda..."></textarea>
                     </div>
 
+                    <!-- GANTI PIN ADMIN -->
+                    <div class="pt-3 border-t space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                        <label class="font-bold text-gray-700 block"><i class="fa-solid fa-key text-pink-600 mr-1"></i> Keamanan PIN Pengaturan</label>
+                        <p class="text-[10px] text-gray-500">Ubah PIN rahasia untuk masuk ke halaman Pengaturan & Masa Aktif aplikasi.</p>
+                        <div>
+                            <label class="font-medium text-gray-600">PIN Admin Baru:</label>
+                            <input type="text" id="setting-admin-pin" placeholder="Kosongkan jika tidak diubah" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-white focus:outline-pink-600 font-bold text-pink-700">
+                        </div>
+                    </div>
+
+                    <!-- PENGATURAN EXPIRED APLIKASI KHUSUS DEVELOPER -->
+                    <div class="pt-3 border-t space-y-2 bg-pink-50/50 p-3 rounded-2xl border border-pink-100">
+                        <label class="font-bold text-gray-700 block"><i class="fa-solid fa-calendar-days text-pink-600 mr-1"></i> Pengaturan Masa Aktif / Expired Aplikasi</label>
+                        <p class="text-[10px] text-gray-500">Tentukan batas tanggal kedaluwarsa aplikasi ini. Jika melewati tanggal ini, aplikasi akan otomatis terkunci.</p>
+                        <div>
+                            <label class="font-medium text-gray-600">Tanggal Kedaluwarsa (Expired Date):</label>
+                            <input type="date" id="setting-expired-date" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-white focus:outline-pink-600 font-bold text-pink-700">
+                        </div>
+                    </div>
+
                     <div class="pt-2 border-t space-y-2">
                         <label class="font-medium text-gray-600 block">Zona Reset Data Toko</label>
                         <button onclick="masterResetAplikasi()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl shadow transition text-xs flex items-center justify-center">
@@ -713,7 +784,9 @@
             storeName: 'Queen Laundry',
             storeAddress: 'Singaparna, Tasikmalaya',
             logoUrl: 'logo-queen.png',
-            footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry'
+            footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry',
+            expiredDate: '2026-12-31',
+            adminPin: 'queenadmin123' // PIN Default Admin
         };
 
         const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -740,7 +813,72 @@
             if(defaultRadio) defaultRadio.checked = true;
 
             await loadCloudData();
+            cekMasaAktifAplikasi(); 
         });
+
+        // FUNGSI PIN RAHASIA ADMIN
+        function bukaMenuPengaturan() {
+            const modal = document.getElementById('pin-modal');
+            const pinInput = document.getElementById('input-pin-rahasia');
+            if(pinInput) pinInput.value = '';
+            if(modal) modal.classList.remove('hidden');
+            if(pinInput) pinInput.focus();
+        }
+
+        function tutupPinModal() {
+            const modal = document.getElementById('pin-modal');
+            if(modal) modal.classList.add('hidden');
+        }
+
+        function verifikasiPinRahasia() {
+            const pinInput = document.getElementById('input-pin-rahasia');
+            const enteredPin = pinInput ? pinInput.value.trim() : '';
+            const correctPin = appSettings.adminPin || 'queenadmin123';
+
+            if (enteredPin === correctPin) {
+                tutupPinModal();
+                switchView('view-pengaturan');
+            } else {
+                alert('PIN Rahasia salah! Silakan coba lagi.');
+                if(pinInput) {
+                    pinInput.value = '';
+                    pinInput.focus();
+                }
+            }
+        }
+
+        // FUNGSI CEK EXPIRED APLIKASI
+        function cekMasaAktifAplikasi() {
+            if (!appSettings.expiredDate) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const expDate = new Date(appSettings.expiredDate);
+            expDate.setHours(0, 0, 0, 0);
+
+            const selisihHari = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+            
+            const modalExpired = document.getElementById('expired-modal');
+            const expiredDateInfo = document.getElementById('expired-date-info');
+            const dashboardWarning = document.getElementById('dashboard-expired-warning');
+            const dashboardWarningText = document.getElementById('dashboard-expired-text');
+
+            const formattedExpDate = expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            if (selisihHari < 0) {
+                if (modalExpired) modalExpired.classList.remove('hidden');
+                if (expiredDateInfo) expiredDateInfo.innerText = `Masa Aktif Berakhir Pada: ${formattedExpDate} (Sudah Kedaluwarsa)`;
+                if (dashboardWarning) dashboardWarning.classList.remove('hidden');
+                if (dashboardWarningText) dashboardWarningText.innerHTML = `<b>PERINGATAN KERAS:</b> Masa aktif aplikasi telah habis pada <b>${formattedExpDate}</b>. Segera hubungi developer untuk memperpanjang lisensi.`;
+            } else if (selisihHari <= 7) {
+                if (dashboardWarning) dashboardWarning.classList.remove('hidden');
+                if (dashboardWarningText) dashboardWarningText.innerHTML = `Masa aktif aplikasi Anda akan segera berakhir dalam <b>${selisihHari} hari lagi</b> (${formattedExpDate}). Hubungi developer aplikasi kasir queen laundry A Ashraf untuk melakukan perpanjangan aplikasi.`;
+            } else {
+                if (modalExpired) modalExpired.classList.add('hidden');
+                if (dashboardWarning) dashboardWarning.classList.add('hidden');
+            }
+        }
 
         async function loadCloudData() {
             if (!supabaseClient) return;
@@ -800,12 +938,15 @@
                         storeName: resSettings[0].store_name,
                         storeAddress: resSettings[0].store_address,
                         logoUrl: resSettings[0].logo_url || 'logo-queen.png',
-                        footerText: resSettings[0].footer_text
+                        footerText: resSettings[0].footer_text,
+                        expiredDate: resSettings[0].expired_date || '2026-12-31',
+                        adminPin: resSettings[0].admin_pin || 'queenadmin123'
                     };
                 }
 
                 applySettingsToUI();
                 updateDashboardKeuangan();
+                cekMasaAktifAplikasi();
             } catch (err) {
                 console.error("Gagal memuat data dari Supabase:", err);
             }
@@ -972,6 +1113,12 @@
             document.getElementById('setting-store-name').value = appSettings.storeName;
             document.getElementById('setting-store-address').value = appSettings.storeAddress;
             document.getElementById('setting-footer-text').value = appSettings.footerText;
+            
+            const expInput = document.getElementById('setting-expired-date');
+            if (expInput) expInput.value = appSettings.expiredDate || '2026-12-31';
+
+            const pinInput = document.getElementById('setting-admin-pin');
+            if (pinInput) pinInput.value = '';
         }
 
         function toggleSidebar() {
@@ -987,6 +1134,16 @@
             appSettings.storeName = document.getElementById('setting-store-name').value || 'Queen Laundry';
             appSettings.storeAddress = document.getElementById('setting-store-address').value || 'Singaparna, Tasikmalaya';
             appSettings.footerText = document.getElementById('setting-footer-text').value || 'Terima kasih telah mempercayakan cucian Anda';
+            
+            const expInput = document.getElementById('setting-expired-date');
+            if (expInput && expInput.value) {
+                appSettings.expiredDate = expInput.value;
+            }
+
+            const pinInput = document.getElementById('setting-admin-pin');
+            if (pinInput && pinInput.value.trim() !== '') {
+                appSettings.adminPin = pinInput.value.trim();
+            }
 
             const fileInput = document.getElementById('setting-logo-file');
             if (fileInput.files && fileInput.files[0]) {
@@ -995,14 +1152,16 @@
                     appSettings.logoUrl = e.target.result;
                     await saveSettingsToCloud();
                     applySettingsToUI();
-                    alert('Pengaturan toko berhasil disimpan ke Cloud!');
+                    cekMasaAktifAplikasi();
+                    alert('Pengaturan toko, PIN admin & masa aktif berhasil disimpan ke Cloud!');
                     switchView('view-dashboard');
                 };
                 reader.readAsDataURL(fileInput.files[0]);
             } else {
                 await saveSettingsToCloud();
                 applySettingsToUI();
-                alert('Pengaturan toko berhasil disimpan ke Cloud!');
+                cekMasaAktifAplikasi();
+                alert('Pengaturan toko, PIN admin & masa aktif berhasil disimpan ke Cloud!');
                 switchView('view-dashboard');
             }
         }
@@ -1014,7 +1173,9 @@
                 store_name: appSettings.storeName,
                 store_address: appSettings.storeAddress,
                 logo_url: appSettings.logoUrl,
-                footer_text: appSettings.footerText
+                footer_text: appSettings.footerText,
+                expired_date: appSettings.expiredDate,
+                admin_pin: appSettings.adminPin
             }]);
         }
 
@@ -1619,7 +1780,6 @@
             let opsi = prompt(`Pilih Aksi untuk Pesanan ${order.id}:\n1. Ketik "RESET" untuk mengosongkan/mereset isi item pesanan ini.\n2. Ketik "HAPUS" untuk menghapus permanen pesanan ini.`);
             
             if (opsi === 'RESET' || opsi === 'reset') {
-                // If payment was made using member balance, refund it back on reset
                 if (order.metode === 'Member') {
                     let memberNameClean = order.nama.replace(' (Umum)', '');
                     let memberObj = dataPelanggan.find(p => p.nama === memberNameClean);
@@ -1646,7 +1806,6 @@
                 renderDaftarOrder();
                 alert(`Pesanan ${id} berhasil direset isinya menjadi kosong & saldo member (jika ada) telah dikembalikan.`);
             } else if (opsi === 'HAPUS' || opsi === 'hapus') {
-                // Refund member balance if deleted
                 if (order.metode === 'Member') {
                     let memberNameClean = order.nama.replace(' (Umum)', '');
                     let memberObj = dataPelanggan.find(p => p.nama === memberNameClean);
@@ -1725,10 +1884,8 @@
                 let oldTotal = existingOrder ? (Number(existingOrder.total || 0)) : 0;
                 let selisihTotal = total - oldTotal; 
 
-                // Handle Member Balance Refund / Deduction on Revision
                 if (selectedPayment === 'Member' && pelangganObj) {
                     let currentSaldoMember = Number(pelangganObj.saldo) || 0;
-                    // If previous payment was also member, account for old payment refund before deducting new total
                     let refundOld = (existingOrder && existingOrder.metode === 'Member') ? Number(existingOrder.bayar || existingOrder.total || 0) : 0;
                     let adjustedSaldo = currentSaldoMember + refundOld;
 
@@ -1739,7 +1896,6 @@
                     pelangganObj.saldo = adjustedSaldo - total;
                     await supabaseClient.from('pelanggan').update({ saldo: pelangganObj.saldo }).eq('nama', pelangganObj.nama);
                 } else if (existingOrder && existingOrder.metode === 'Member') {
-                    // If changing from Member to another method during revision, refund the old member balance
                     let memberNameClean = existingOrder.nama.replace(' (Umum)', '');
                     let oldMemberObj = dataPelanggan.find(p => p.nama === memberNameClean);
                     if (oldMemberObj) {
@@ -1866,45 +2022,48 @@
 
             keranjangTransaksi = [];
             renderKeranjang();
+            updateDashboardKeuangan();
             tampilkanNotaHasil(lastCreatedOrder);
         }
 
         function tampilkanNotaHasil(order) {
-            document.getElementById('nota-logo-img').src = appSettings.logoUrl;
             document.getElementById('nota-store-name').innerText = appSettings.storeName.toUpperCase();
             document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
+            document.getElementById('nota-logo-img').src = appSettings.logoUrl;
+            document.getElementById('nota-footer-message').innerHTML = appSettings.footerText;
+
             document.getElementById('nota-id').innerText = order.id;
             document.getElementById('nota-tanggal').innerText = order.tanggal;
             document.getElementById('nota-estimasi-selesai').innerText = order.estimasi;
             document.getElementById('nota-pelanggan').innerText = order.nama;
 
-            const itemsContainer = document.getElementById('nota-items-container');
-            itemsContainer.innerHTML = '';
+            const container = document.getElementById('nota-items-container');
+            container.innerHTML = '';
             order.items.forEach(item => {
                 let sub = item.harga * item.qty;
-                itemsContainer.innerHTML += `
+                container.innerHTML += `
                     <div class="flex justify-between">
-                        <span>${item.qty} ${item.satuan} ${item.nama}</span>
+                        <span>${item.qty} ${item.satuan} x ${item.nama}</span>
                         <span>Rp${sub.toLocaleString('id-ID')}</span>
                     </div>`;
             });
 
-            const diskonWrapper = document.getElementById('nota-diskon-wrapper');
+            const diskonWrap = document.getElementById('nota-diskon-wrapper');
             const diskonText = document.getElementById('nota-diskon-text');
-            if (order.diskon > 0) {
-                diskonWrapper.classList.remove('hidden');
+            if (order.diskon && order.diskon > 0) {
+                diskonWrap.classList.remove('hidden');
                 diskonText.innerText = `-Rp${Math.round(order.diskon).toLocaleString('id-ID')}`;
             } else {
-                diskonWrapper.classList.add('hidden');
+                diskonWrap.classList.add('hidden');
             }
 
-            const catatanWrapper = document.getElementById('nota-catatan-wrapper');
+            const catatanWrap = document.getElementById('nota-catatan-wrapper');
             const catatanText = document.getElementById('nota-catatan-text');
             if (order.catatan) {
-                catatanWrapper.classList.remove('hidden');
+                catatanWrap.classList.remove('hidden');
                 catatanText.innerText = order.catatan;
             } else {
-                catatanWrapper.classList.add('hidden');
+                catatanWrap.classList.add('hidden');
             }
 
             document.getElementById('nota-grandtotal').innerText = 'Rp' + Number(order.total).toLocaleString('id-ID');
@@ -1912,18 +2071,29 @@
             document.getElementById('nota-sisa').innerText = 'Rp' + Number(order.sisa).toLocaleString('id-ID');
             document.getElementById('nota-metode').innerText = order.metode;
             document.getElementById('nota-status-label').innerText = `STATUS: ${order.statusBayar}`;
-            document.getElementById('nota-footer-message').innerHTML = `${appSettings.footerText}<br><b>Queen Laundry</b>`;
 
             switchView('view-nota');
         }
 
+        function kirimNotaWAAktif() {
+            if (!lastCreatedOrder) return;
+            let noHp = lastCreatedOrder.telepon || '08123456789';
+            if (noHp.startsWith('0')) {
+                noHp = '62' + noHp.slice(1);
+            }
+
+            let text = `Halo ${lastCreatedOrder.nama},\n\nTerima kasih telah menggunakan jasa *${appSettings.storeName}*.\n\nBerikut rincian nota Anda:\n*No Nota:* ${lastCreatedOrder.id}\n*Tanggal:* ${lastCreatedOrder.tanggal}\n*Estimasi Selesai:* ${lastCreatedOrder.estimasi}\n*Total Biaya:* Rp${Number(lastCreatedOrder.total).toLocaleString('id-ID')}\n*Status Bayar:* ${lastCreatedOrder.statusBayar}\n\n${appSettings.footerText}`;
+            
+            let url = `https://wa.me/${noHp}?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+
         function filterOrder(status) {
             currentFilterStatus = status;
-            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(s => {
-                let btnId = 'btn-cat-' + (s === 'SEMUA' ? 'semua' : s === 'DIPROSES' ? 'diproses' : s === 'SIAP DIAMBIL' ? 'siap' : 'selesai');
-                let btn = document.getElementById(btnId);
+            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(st => {
+                const btn = document.getElementById(`btn-cat-${st === 'SIAP DIAMBIL' ? 'siap' : st.toLowerCase()}`);
                 if(btn) {
-                    if(s === status) {
+                    if(st === status) {
                         btn.className = "p-2 bg-pink-600 text-white rounded-xl shadow-xs";
                     } else {
                         btn.className = "p-2 bg-white text-gray-600 rounded-xl shadow-xs";
@@ -1941,50 +2111,60 @@
             container.innerHTML = '';
 
             let filtered = dataOrder.filter(o => {
-                let matchStatus = currentFilterStatus === 'SEMUA' || o.status === currentFilterStatus;
                 let matchKeyword = o.id.toLowerCase().includes(keyword) || o.nama.toLowerCase().includes(keyword);
-                return matchStatus && matchKeyword;
+                if (currentFilterStatus === 'SEMUA') return matchKeyword;
+                return matchKeyword && o.status === currentFilterStatus;
             });
 
             if(filtered.length === 0) {
-                container.innerHTML = '<div class="text-center p-6 bg-white rounded-2xl text-xs text-gray-400">Tidak ada data order ditemukan</div>';
+                container.innerHTML = '<div class="text-center p-6 text-xs text-gray-400 bg-white rounded-2xl shadow-sm">Belum ada data order laundry</div>';
                 return;
             }
 
-            filtered.forEach((o) => {
-                let statusBadgeColor = o.status === 'DIPROSES' ? 'bg-blue-100 text-blue-700' : (o.status === 'SIAP DIAMBIL' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700');
-                
+            filtered.forEach(o => {
+                let badgeColor = 'bg-blue-100 text-blue-700';
+                if(o.status === 'SIAP DIAMBIL') badgeColor = 'bg-amber-100 text-amber-700';
+                if(o.status === 'SELESAI') badgeColor = 'bg-emerald-100 text-emerald-700';
+
+                let itemsSummary = o.items.map(i => `${i.qty} ${i.satuan} ${i.nama}`).join(', ');
+
                 container.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-3 text-xs border border-gray-100">
-                        <div class="flex justify-between items-center border-b pb-2">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2.5 border border-gray-100">
+                        <div class="flex justify-between items-center">
                             <div>
-                                <span class="font-bold text-gray-800 text-sm">${o.id}</span>
-                                <span class="text-[10px] text-gray-400 block">${o.tanggal}</span>
+                                <span class="font-bold text-gray-800 text-sm">${o.id}</span> - <span class="text-xs text-gray-600 font-semibold">${o.nama}</span>
                             </div>
-                            <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${statusBadgeColor}">${o.status}</span>
+                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${badgeColor}">${o.status}</span>
                         </div>
-                        <div class="space-y-1 text-gray-600">
-                            <div><strong>Pelanggan:</strong> ${o.nama}</div>
-                            <div><strong>Total:</strong> Rp${Number(o.total).toLocaleString('id-ID')} (${o.statusBayar})</div>
-                            <div><strong>Metode:</strong> ${o.metode}</div>
-                            <div><strong>Estimasi Selesai:</strong> <span class="text-pink-600 font-semibold">${o.estimasi}</span></div>
+                        <div class="text-xs text-gray-500 space-y-0.5">
+                            <div><i class="fa-solid fa-shirt mr-1 text-pink-500"></i> ${itemsSummary}</div>
+                            <div><i class="fa-solid fa-calendar mr-1 text-gray-400"></i> Masuk: ${o.tanggal} | Est: <span class="text-pink-600 font-semibold">${o.estimasi}</span></div>
+                            <div><i class="fa-solid fa-wallet mr-1 text-gray-400"></i> Total: <b>Rp${Number(o.total).toLocaleString('id-ID')}</b> (${o.statusBayar})</div>
                         </div>
                         <div class="flex flex-wrap gap-1.5 pt-2 border-t">
-                            <button onclick="ubahStatusOrder('${o.id}', 'DIPROSES')" class="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">Proses</button>
-                            <button onclick="ubahStatusOrder('${o.id}', 'SIAP DIAMBIL')" class="px-2 py-1 bg-amber-50 text-amber-700 rounded-lg font-bold">Siap</button>
-                            <button onclick="ubahStatusOrder('${o.id}', 'SELESAI')" class="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">Selesai</button>
-                            <button onclick="revisiOrder('${o.id}')" class="px-2 py-1 bg-pink-50 text-pink-700 rounded-lg font-bold ml-auto"><i class="fa-solid fa-pen-to-square"></i> Revisi</button>
-                            <button onclick="resetAtauHapusOrder('${o.id}')" class="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg font-bold" title="Reset/Hapus"><i class="fa-solid fa-trash"></i></button>
+                            <select onchange="updateStatusOrder('${o.id}', this.value)" class="p-1.5 border rounded-xl text-xs bg-gray-50 font-semibold focus:outline-pink-600">
+                                <option value="DIPROSES" ${o.status === 'DIPROSES' ? 'selected' : ''}>Proses</option>
+                                <option value="SIAP DIAMBIL" ${o.status === 'SIAP DIAMBIL' ? 'selected' : ''}>Siap Diambil</option>
+                                <option value="SELESAI" ${o.status === 'SELESAI' ? 'selected' : ''}>Selesai & Diambil</option>
+                            </select>
+                            <button onclick="revisiOrder('${o.id}')" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition">Revisi</button>
+                            <button onclick="lihatNotaLama(${JSON.stringify(o).replace(/"/g, '&quot;')})" class="bg-pink-50 text-pink-700 hover:bg-pink-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition">Nota</button>
+                            <button onclick="resetAtauHapusOrder('${o.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Reset/Hapus Order"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </div>`;
             });
         }
 
-        async function ubahStatusOrder(id, statusBaru) {
+        function lihatNotaLama(order) {
+            lastCreatedOrder = order;
+            tampilkanNotaHasil(order);
+        }
+
+        async function updateStatusOrder(id, statusBaru) {
             if (!supabaseClient) return;
-            const o = dataOrder.find(item => item.id === id);
-            if(o) {
-                o.status = statusBaru;
+            const order = dataOrder.find(o => o.id === id);
+            if(order) {
+                order.status = statusBaru;
                 await supabaseClient.from('orders').update({ status: statusBaru }).eq('invoice_id', id);
                 renderDaftarOrder();
                 updateDashboardKeuangan();
@@ -1992,50 +2172,51 @@
         }
 
         function updateDashboardKeuangan() {
-            let totalPemasukan = 0;
+            let totalPemasukanMasuk = 0;
             let totalPengeluaran = 0;
+
             let sumCash = 0;
             let sumTransfer = 0;
             let sumQris = 0;
             let sumMember = 0;
 
             dataOrder.forEach(o => {
-                let bayarVal = Number(o.bayar) || 0;
-                totalPemasukan += bayarVal;
+                let bayarReal = Number(o.bayar || 0);
+                totalPemasukanMasuk += bayarReal;
 
-                if (o.metode === 'Cash') sumCash += bayarVal;
-                else if (o.metode === 'Transfer') sumTransfer += bayarVal;
-                else if (o.metode === 'QRIS') sumQris += bayarVal;
-                else if (o.metode === 'Member') sumMember += bayarVal;
+                if(o.metode === 'Cash') sumCash += bayarReal;
+                if(o.metode === 'Transfer') sumTransfer += bayarReal;
+                if(o.metode === 'QRIS') sumQris += bayarReal;
+                if(o.metode === 'Member') sumMember += bayarReal;
             });
 
             dataPengeluaran.forEach(e => {
-                totalPengeluaran += Number(e.amount) || 0;
+                totalPengeluaran += Number(e.amount || 0);
             });
 
-            let saldoKasBersih = totalPemasukan - totalPengeluaran;
+            let saldoKasBersih = totalPemasukanMasuk - totalPengeluaran;
 
             const dashPendapatan = document.getElementById('dash-pendapatan');
             const headerPendapatan = document.getElementById('header-pendapatan');
-            const dashTotalOrder = document.getElementById('dash-total-order');
-            const dashTotalPengeluaran = document.getElementById('dash-total-pengeluaran');
-            const dashTotalMember = document.getElementById('dash-total-member');
+            const dashOrder = document.getElementById('dash-total-order');
+            const dashExp = document.getElementById('dash-total-pengeluaran');
+            const dashMember = document.getElementById('dash-total-member');
 
             if(dashPendapatan) dashPendapatan.innerText = 'Rp' + saldoKasBersih.toLocaleString('id-ID');
             if(headerPendapatan) headerPendapatan.innerText = 'Rp' + saldoKasBersih.toLocaleString('id-ID');
-            if(dashTotalOrder) dashTotalOrder.innerText = dataOrder.length;
-            if(dashTotalPengeluaran) dashTotalPengeluaran.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            if(dashTotalMember) dashTotalMember.innerText = dataPelanggan.length;
+            if(dashOrder) dashOrder.innerText = dataOrder.length;
+            if(dashExp) dashExp.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
+            if(dashMember) dashMember.innerText = dataPelanggan.length;
 
-            const countDiproses = dataOrder.filter(o => o.status === 'DIPROSES').length;
-            const countSiap = dataOrder.filter(o => o.status === 'SIAP DIAMBIL').length;
-            const countSelesai = dataOrder.filter(o => o.status === 'SELESAI').length;
+            let countDiproses = dataOrder.filter(o => o.status === 'DIPROSES').length;
+            let countSiap = dataOrder.filter(o => o.status === 'SIAP DIAMBIL').length;
+            let countSelesai = dataOrder.filter(o => o.status === 'SELESAI').length;
 
             if(document.getElementById('count-diproses')) document.getElementById('count-diproses').innerText = countDiproses;
             if(document.getElementById('count-siap')) document.getElementById('count-siap').innerText = countSiap;
             if(document.getElementById('count-selesai')) document.getElementById('count-selesai').innerText = countSelesai;
 
-            if(document.getElementById('fin-pemasukan')) document.getElementById('fin-pemasukan').innerText = 'Rp' + totalPemasukan.toLocaleString('id-ID');
+            if(document.getElementById('fin-pemasukan')) document.getElementById('fin-pemasukan').innerText = 'Rp' + totalPemasukanMasuk.toLocaleString('id-ID');
             if(document.getElementById('fin-pengeluaran')) document.getElementById('fin-pengeluaran').innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
 
             if(document.getElementById('sum-cash')) document.getElementById('sum-cash').innerText = 'Rp' + sumCash.toLocaleString('id-ID');
@@ -2046,88 +2227,52 @@
 
         function renderChartAnalitik() {
             const ctx = document.getElementById('chartAnalitik');
-            if (!ctx) return;
+            if(!ctx) return;
 
-            let totalCash = 0, totalTransfer = 0, totalQris = 0, totalMember = 0;
-            dataOrder.forEach(o => {
-                let b = Number(o.bayar) || 0;
-                if(o.metode === 'Cash') totalCash += b;
-                else if(o.metode === 'Transfer') totalTransfer += b;
-                else if(o.metode === 'QRIS') totalQris += b;
-                else if(o.metode === 'Member') totalMember += b;
-            });
+            let totalPemasukan = 0;
+            dataOrder.forEach(o => totalPemasukan += Number(o.bayar || 0));
 
-            if (chartInstance) {
+            let totalKeluar = 0;
+            dataPengeluaran.forEach(e => totalKeluar += Number(e.amount || 0));
+
+            if(chartInstance) {
                 chartInstance.destroy();
             }
 
             chartInstance = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: ['Cash', 'Transfer', 'QRIS', 'Potong Saldo'],
+                    labels: ['Pemasukan Kas', 'Pengeluaran'],
                     datasets: [{
-                        data: [totalCash, totalTransfer, totalQris, totalMember],
-                        backgroundColor: ['#ec4899', '#6366f1', '#14b8a6', '#a855f7'],
-                        borderWidth: 1
+                        label: 'Nominal (Rp)',
+                        data: [totalPemasukan, totalKeluar],
+                        backgroundColor: ['#059669', '#e11d48'],
+                        borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { boxWidth: 12, font: { size: 10 } }
-                        }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
 
         function cetakLaporanKeuangan() {
-            let totalPemasukan = 0;
-            let totalPengeluaran = 0;
-            dataOrder.forEach(o => { totalPemasukan += Number(o.bayar) || 0; });
-            dataPengeluaran.forEach(e => { totalPengeluaran += Number(e.amount) || 0; });
-            let bersih = totalPemasukan - totalPengeluaran;
+            let totMasuk = 0;
+            dataOrder.forEach(o => totMasuk += Number(o.bayar || 0));
+            let totKeluar = 0;
+            dataPengeluaran.forEach(e => totKeluar += Number(e.amount || 0));
+            let totBersih = totMasuk - totKeluar;
 
             document.getElementById('laporan-store-name').innerText = appSettings.storeName.toUpperCase();
-            document.getElementById('laporan-tanggal-cetak').innerText = "Dicetak pada: " + todayString;
-            document.getElementById('lap-tot-pemasukan').innerText = 'Rp' + totalPemasukan.toLocaleString('id-ID');
-            document.getElementById('lap-tot-pengeluaran').innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            document.getElementById('lap-tot-bersih').innerText = 'Rp' + bersih.toLocaleString('id-ID');
+            document.getElementById('laporan-tanggal-cetak').innerText = `Dicetak pada: ${todayString}`;
+            document.getElementById('lap-tot-pemasukan').innerText = 'Rp' + totMasuk.toLocaleString('id-ID');
+            document.getElementById('lap-tot-pengeluaran').innerText = 'Rp' + totKeluar.toLocaleString('id-ID');
+            document.getElementById('lap-tot-bersih').innerText = 'Rp' + totBersih.toLocaleString('id-ID');
 
-            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
-            document.getElementById('view-laporan-cetak').classList.remove('hidden');
-            window.scrollTo(0,0);
-        }
-
-        function kirimNotaWAAktif() {
-            if(!lastCreatedOrder) { alert('Tidak ada data nota aktif!'); return; }
-            let telp = lastCreatedOrder.telepon || '08123456789';
-            if(telp.startsWith('0')) {
-                telp = '62' + telp.slice(1);
-            }
-            
-            let pesan = `Halo *${lastCreatedOrder.nama}*, terima kasih telah mencuci di *${appSettings.storeName}*!\n\n`;
-            pesan += `No Nota: *${lastCreatedOrder.id}*\n`;
-            pesan += `Tanggal: ${lastCreatedOrder.tanggal}\n`;
-            pesan += `Estimasi Selesai: *${lastCreatedOrder.estimasi}*\n\n`;
-            pesan += `*Rincian Cucian:*\n`;
-            lastCreatedOrder.items.forEach(i => {
-                pesan += `- ${i.qty} ${i.satuan} ${i.nama} (Rp${(i.harga * i.qty).toLocaleString('id-ID')})\n`;
-            });
-            if(lastCreatedOrder.diskon > 0) {
-                pesan += `Diskon: -Rp${Math.round(lastCreatedOrder.diskon).toLocaleString('id-ID')}\n`;
-            }
-            pesan += `\n*Total Biaya:* Rp${Number(lastCreatedOrder.total).toLocaleString('id-ID')}\n`;
-            pesan += `*Dibayar/DP:* Rp${Number(lastCreatedOrder.bayar).toLocaleString('id-ID')}\n`;
-            pesan += `*Sisa:* Rp${Number(lastCreatedOrder.sisa).toLocaleString('id-ID')}\n`;
-            pesan += `*Status Bayar:* ${lastCreatedOrder.statusBayar}\n\n`;
-            pesan += `${appSettings.footerText}`;
-
-            let url = `https://wa.me/${telp}?text=${encodeURIComponent(pesan)}`;
-            window.open(url, '_blank');
+            switchView('view-laporan-cetak');
         }
     </script>
 </body>
