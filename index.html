@@ -601,6 +601,16 @@
                         <textarea id="setting-footer-text" rows="3" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 focus:outline-pink-600" placeholder="Terima kasih telah mempercayakan cucian Anda..."></textarea>
                     </div>
 
+                    <!-- KETENTUAN GARANSI & KLAIM (FITUR BARU) -->
+                    <div class="pt-3 border-t space-y-2 bg-pink-50/30 p-3 rounded-2xl border border-pink-100">
+                        <label class="font-bold text-gray-700 block"><i class="fa-solid fa-shield-halved text-pink-600 mr-1"></i> Perbaikan & Ketentuan Garansi (Tampil di Nota)</label>
+                        <p class="text-[10px] text-gray-500">Atur syarat dan ketentuan garansi cucian yang akan dicetak di bagian bawah nota pelanggan.</p>
+                        <div>
+                            <label class="font-medium text-gray-600">Isi Ketentuan Garansi:</label>
+                            <textarea id="setting-garansi-text" rows="4" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-white focus:outline-pink-600">Garansi cuci ulang berlaku maksimal 2x24 jam setelah pakaian diambil dengan menyertakan nota asli. Garansi tidak mencakup kerusakan akibat bahan kain yang rapuh/luntur alami.</textarea>
+                        </div>
+                    </div>
+
                     <!-- GANTI PIN ADMIN -->
                     <div class="pt-3 border-t space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                         <label class="font-bold text-gray-700 block"><i class="fa-solid fa-key text-pink-600 mr-1"></i> Keamanan PIN Pengaturan</label>
@@ -675,8 +685,15 @@
                     <div class="flex justify-between"><span>Metode Bayar</span> <span id="nota-metode">Cash</span></div>
                 </div>
                 <hr class="border-dashed">
-                <div class="text-center font-bold text-sm" id="nota-status-label">STATUS: LUNAS</div>
-                <div class="text-center text-gray-400 pt-2 text-[10px]" id="nota-footer-message">
+                
+                <!-- KETENTUAN GARANSI DI NOTA -->
+                <div class="bg-pink-50/50 p-2.5 rounded-xl border border-pink-100 text-[10px] text-gray-600 space-y-1">
+                    <p class="font-bold text-pink-700 uppercase"><i class="fa-solid fa-shield-halved mr-1"></i> Ketentuan Garansi:</p>
+                    <p id="nota-garansi-text">-</p>
+                </div>
+
+                <div class="text-center font-bold text-sm pt-1" id="nota-status-label">STATUS: LUNAS</div>
+                <div class="text-center text-gray-400 pt-1 text-[10px]" id="nota-footer-message">
                     Terima kasih telah mempercayakan<br>cucian Anda di <span class="font-bold text-pink-600">Queen Laundry</span>
                 </div>
             </div>
@@ -784,8 +801,9 @@
             storeAddress: 'Singaparna, Tasikmalaya',
             logoUrl: 'logo-queen.png',
             footerText: 'Terima kasih telah mempercayakan cucian Anda di Queen Laundry',
+            garansiText: 'Garansi cuci ulang berlaku maksimal 2x24 jam setelah pakaian diambil dengan menyertakan nota asli. Garansi tidak mencakup kerusakan akibat bahan kain yang rapuh/luntur alami.',
             expiredDate: '2026-12-31',
-            adminPin: 'queenadmin123' // PIN Default Admin
+            adminPin: 'queenadmin123'
         };
 
         const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -815,7 +833,6 @@
             cekMasaAktifAplikasi(); 
         });
 
-        // FUNGSI PIN RAHASIA ADMIN
         function bukaMenuPengaturan() {
             const modal = document.getElementById('pin-modal');
             const pinInput = document.getElementById('input-pin-rahasia');
@@ -846,7 +863,6 @@
             }
         }
 
-        // FUNGSI CEK EXPIRED APLIKASI
         function cekMasaAktifAplikasi() {
             if (!appSettings.expiredDate) return;
 
@@ -938,6 +954,7 @@
                         storeAddress: resSettings[0].store_address,
                         logoUrl: resSettings[0].logo_url || 'logo-queen.png',
                         footerText: resSettings[0].footer_text,
+                        garansiText: resSettings[0].garansi_text || appSettings.garansiText,
                         expiredDate: resSettings[0].expired_date || '2026-12-31',
                         adminPin: resSettings[0].admin_pin || 'queenadmin123'
                     };
@@ -1053,6 +1070,9 @@
                 textToPrint += `Metode   : ${lastCreatedOrder.metode}\n`;
                 textToPrint += `STATUS   : ${lastCreatedOrder.statusBayar}\n`;
                 textToPrint += `--------------------------------\n`;
+                textToPrint += `KETENTUAN GARANSI:\n`;
+                textToPrint += `${appSettings.garansiText}\n`;
+                textToPrint += `--------------------------------\n`;
                 textToPrint += `${appSettings.footerText}\n\n\n`;
 
                 commands.push(encoder.encode(textToPrint));
@@ -1113,6 +1133,9 @@
             document.getElementById('setting-store-address').value = appSettings.storeAddress;
             document.getElementById('setting-footer-text').value = appSettings.footerText;
             
+            const garansiInput = document.getElementById('setting-garansi-text');
+            if(garansiInput) garansiInput.value = appSettings.garansiText;
+            
             const expInput = document.getElementById('setting-expired-date');
             if (expInput) expInput.value = appSettings.expiredDate || '2026-12-31';
 
@@ -1134,6 +1157,11 @@
             appSettings.storeAddress = document.getElementById('setting-store-address').value || 'Singaparna, Tasikmalaya';
             appSettings.footerText = document.getElementById('setting-footer-text').value || 'Terima kasih telah mempercayakan cucian Anda';
             
+            const garansiInput = document.getElementById('setting-garansi-text');
+            if(garansiInput && garansiInput.value.trim() !== '') {
+                appSettings.garansiText = garansiInput.value.trim();
+            }
+            
             const expInput = document.getElementById('setting-expired-date');
             if (expInput && expInput.value) {
                 appSettings.expiredDate = expInput.value;
@@ -1152,7 +1180,7 @@
                     await saveSettingsToCloud();
                     applySettingsToUI();
                     cekMasaAktifAplikasi();
-                    alert('Pengaturan toko, PIN admin & masa aktif berhasil disimpan ke Cloud!');
+                    alert('Pengaturan toko, garansi, PIN admin & masa aktif berhasil disimpan ke Cloud!');
                     switchView('view-dashboard');
                 };
                 reader.readAsDataURL(fileInput.files[0]);
@@ -1160,7 +1188,7 @@
                 await saveSettingsToCloud();
                 applySettingsToUI();
                 cekMasaAktifAplikasi();
-                alert('Pengaturan toko, PIN admin & masa aktif berhasil disimpan ke Cloud!');
+                alert('Pengaturan toko, garansi, PIN admin & masa aktif berhasil disimpan ke Cloud!');
                 switchView('view-dashboard');
             }
         }
@@ -1173,6 +1201,7 @@
                 store_address: appSettings.storeAddress,
                 logo_url: appSettings.logoUrl,
                 footer_text: appSettings.footerText,
+                garansi_text: appSettings.garansiText,
                 expired_date: appSettings.expiredDate,
                 admin_pin: appSettings.adminPin
             }]);
@@ -1902,6 +1931,8 @@
                         await supabaseClient.from('pelanggan').update({ saldo: oldMemberObj.saldo }).eq('nama', oldMemberObj.nama);
                     }
                 }
+            } else {
+                invoiceId = 'QN-' + Math.floor(1000 + Math.random() * 9000);
             }
 
             if (selectedPayment === 'Member') {
@@ -1933,166 +1964,183 @@
                 sisa = total;
             }
 
+            const orderDataToSave = {
+                invoice_id: invoiceId,
+                nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
+                telepon: telepon,
+                items: JSON.stringify(keranjangTransaksi),
+                diskon: diskonFinal,
+                kode_voucher: kodeVoucherFinal,
+                total: total,
+                bayar: bayar,
+                sisa: sisa,
+                status_bayar: statusBayar,
+                status: statusCucianDefault,
+                metode: selectedPayment,
+                tanggal: tglOrderFormatted,
+                estimasi: estimasiSelesaiText,
+                catatan: catatan
+            };
+
             if (isRevisingOrderId) {
-                await supabaseClient.from('orders').update({
-                    nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
-                    telepon: telepon,
-                    items: JSON.stringify(keranjangTransaksi),
-                    diskon: diskonFinal,
-                    kode_voucher: kodeVoucherFinal,
-                    total: total,
-                    bayar: bayar,
-                    sisa: sisa,
-                    status_bayar: statusBayar,
-                    metode: selectedPayment,
-                    tanggal: tglOrderFormatted,
-                    estimasi: estimasiSelesaiText,
-                    catatan: catatan
-                }).eq('invoice_id', invoiceId);
-
-                let idxLocal = dataOrder.findIndex(o => o.id === invoiceId);
-                if (idxLocal !== -1) {
-                    dataOrder[idxLocal] = {
-                        id: invoiceId,
-                        nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
-                        telepon: telepon,
-                        items: [...keranjangTransaksi],
-                        diskon: diskonFinal,
-                        kodeVoucher: kodeVoucherFinal,
-                        total: total,
-                        bayar: bayar,
-                        sisa: sisa,
-                        statusBayar: statusBayar,
-                        status: statusCucianDefault,
-                        metode: selectedPayment,
-                        tanggal: tglOrderFormatted,
-                        estimasi: estimasiSelesaiText,
-                        catatan: catatan
-                    };
-                }
-
-                lastCreatedOrder = dataOrder[idxLocal];
-                isRevisingOrderId = null;
-                document.getElementById('form-transaksi-title').innerText = 'Buat Transaksi Baru';
-                document.getElementById('btn-batal-revisi').classList.add('hidden');
-                document.getElementById('btn-proses-transaksi').innerText = 'PROSES & CETAK NOTA';
+                await supabaseClient.from('orders').update(orderDataToSave).eq('invoice_id', invoiceId);
+                dataOrder = dataOrder.filter(o => o.id !== invoiceId);
             } else {
-                invoiceId = 'INV-' + Date.now().toString().slice(-6);
-                const newOrder = {
-                    invoice_id: invoiceId,
-                    nama: nama + (selectedTipePelanggan === 'umum' ? ' (Umum)' : ''),
-                    telepon: telepon,
-                    items: JSON.stringify(keranjangTransaksi),
-                    diskon: diskonFinal,
-                    kode_voucher: kodeVoucherFinal,
-                    total: total,
-                    bayar: bayar,
-                    sisa: sisa,
-                    status_bayar: statusBayar,
-                    status: 'DIPROSES',
-                    metode: selectedPayment,
-                    tanggal: tglOrderFormatted,
-                    estimasi: estimasiSelesaiText,
-                    catatan: catatan
-                };
-
-                await supabaseClient.from('orders').insert([newOrder]);
-                
-                lastCreatedOrder = {
-                    id: invoiceId,
-                    nama: newOrder.nama,
-                    telepon: telepon,
-                    items: [...keranjangTransaksi],
-                    diskon: diskonFinal,
-                    kodeVoucher: kodeVoucherFinal,
-                    total: total,
-                    bayar: bayar,
-                    sisa: sisa,
-                    statusBayar: statusBayar,
-                    status: 'DIPROSES',
-                    metode: selectedPayment,
-                    tanggal: tglOrderFormatted,
-                    estimasi: estimasiSelesaiText,
-                    catatan: catatan
-                };
-
-                dataOrder.unshift(lastCreatedOrder);
+                await supabaseClient.from('orders').insert([orderDataToSave]);
             }
 
+            dataOrder.unshift({
+                id: invoiceId,
+                nama: orderDataToSave.nama,
+                telepon: telepon,
+                items: keranjangTransaksi,
+                diskon: diskonFinal,
+                kodeVoucher: kodeVoucherFinal,
+                total: total,
+                bayar: bayar,
+                sisa: sisa,
+                statusBayar: statusBayar,
+                status: statusCucianDefault,
+                metode: selectedPayment,
+                tanggal: tglOrderFormatted,
+                estimasi: estimasiSelesaiText,
+                catatan: catatan
+            });
+
+            lastCreatedOrder = {
+                id: invoiceId,
+                nama: orderDataToSave.nama,
+                items: keranjangTransaksi,
+                diskon: diskonFinal,
+                total: total,
+                bayar: bayar,
+                sisa: sisa,
+                statusBayar: statusBayar,
+                metode: selectedPayment,
+                tanggal: tglOrderFormatted,
+                estimasi: estimasiSelesaiText,
+                catatan: catatan
+            };
+
+            isRevisingOrderId = null;
             keranjangTransaksi = [];
-            renderKeranjang();
-            updateDashboardKeuangan();
-            tampilkanNotaHasil(lastCreatedOrder);
+            document.getElementById('form-transaksi-title').innerText = 'Buat Transaksi Baru';
+            document.getElementById('btn-batal-revisi').classList.add('hidden');
+            document.getElementById('btn-proses-transaksi').innerText = 'PROSES & CETAK NOTA';
+
+            tampilkanNotaView(lastCreatedOrder);
         }
 
-        function tampilkanNotaHasil(order) {
+        function tampilkanNotaView(order) {
             document.getElementById('nota-store-name').innerText = appSettings.storeName.toUpperCase();
             document.getElementById('nota-store-address').innerText = appSettings.storeAddress;
             document.getElementById('nota-logo-img').src = appSettings.logoUrl;
-            document.getElementById('nota-footer-message').innerHTML = appSettings.footerText;
+            document.getElementById('nota-footer-message').innerHTML = `Terima kasih telah mempercayakan<br>cucian Anda di <span class="font-bold text-pink-600">${appSettings.storeName}</span>`;
 
             document.getElementById('nota-id').innerText = order.id;
             document.getElementById('nota-tanggal').innerText = order.tanggal;
             document.getElementById('nota-estimasi-selesai').innerText = order.estimasi;
             document.getElementById('nota-pelanggan').innerText = order.nama;
 
-            const container = document.getElementById('nota-items-container');
-            container.innerHTML = '';
+            const itemsContainer = document.getElementById('nota-items-container');
+            itemsContainer.innerHTML = '';
             order.items.forEach(item => {
                 let sub = item.harga * item.qty;
-                container.innerHTML += `
+                itemsContainer.innerHTML += `
                     <div class="flex justify-between">
-                        <span>${item.qty} ${item.satuan} x ${item.nama}</span>
+                        <span>${item.qty} ${item.satuan} ${item.nama}</span>
                         <span>Rp${sub.toLocaleString('id-ID')}</span>
                     </div>`;
             });
 
-            const diskonWrap = document.getElementById('nota-diskon-wrapper');
+            const diskonWrapper = document.getElementById('nota-diskon-wrapper');
             const diskonText = document.getElementById('nota-diskon-text');
-            if (order.diskon && order.diskon > 0) {
-                diskonWrap.classList.remove('hidden');
+            if (order.diskon > 0) {
+                diskonWrapper.classList.remove('hidden');
                 diskonText.innerText = `-Rp${Math.round(order.diskon).toLocaleString('id-ID')}`;
             } else {
-                diskonWrap.classList.add('hidden');
+                diskonWrapper.classList.add('hidden');
             }
 
-            const catatanWrap = document.getElementById('nota-catatan-wrapper');
-            const catatanText = document.getElementById('nota-catatan-text');
+            const catatanWrapper = document.getElementById('nota-catatan-wrapper');
+            const catatanTextSpan = document.getElementById('nota-catatan-text');
             if (order.catatan) {
-                catatanWrap.classList.remove('hidden');
-                catatanText.innerText = order.catatan;
+                catatanWrapper.classList.remove('hidden');
+                catatanTextSpan.innerText = order.catatan;
             } else {
-                catatanWrap.classList.add('hidden');
+                catatanWrapper.classList.add('hidden');
             }
 
             document.getElementById('nota-grandtotal').innerText = 'Rp' + Number(order.total).toLocaleString('id-ID');
             document.getElementById('nota-bayar').innerText = 'Rp' + Number(order.bayar).toLocaleString('id-ID');
             document.getElementById('nota-sisa').innerText = 'Rp' + Number(order.sisa).toLocaleString('id-ID');
             document.getElementById('nota-metode').innerText = order.metode;
-            document.getElementById('nota-status-label').innerText = `STATUS: ${order.statusBayar}`;
+            
+            // Garansi text in nota
+            const notaGaransiEl = document.getElementById('nota-garansi-text');
+            if(notaGaransiEl) notaGaransiEl.innerText = appSettings.garansiText;
+
+            const statusLabel = document.getElementById('nota-status-label');
+            statusLabel.innerText = `STATUS: ${order.statusBayar}`;
+            if (order.statusBayar === 'LUNAS') {
+                statusLabel.className = "text-center font-bold text-sm text-emerald-600 pt-1";
+            } else {
+                statusLabel.className = "text-center font-bold text-sm text-rose-600 pt-1";
+            }
 
             switchView('view-nota');
         }
 
         function kirimNotaWAAktif() {
             if (!lastCreatedOrder) return;
-            let noHp = lastCreatedOrder.telepon || '08123456789';
-            if (noHp.startsWith('0')) {
-                noHp = '62' + noHp.slice(1);
+            const order = lastCreatedOrder;
+            let targetWa = '08123456789';
+            let cleanNama = order.nama.replace(' (Umum)', '');
+            
+            let pObj = dataPelanggan.find(p => p.nama === cleanNama);
+            if(pObj && pObj.telepon) {
+                targetWa = pObj.telepon;
+            } else {
+                let foundO = dataOrder.find(o => o.id === order.id);
+                if(foundO && foundO.telepon) targetWa = foundO.telepon;
             }
 
-            let text = `Halo ${lastCreatedOrder.nama},\n\nTerima kasih telah menggunakan jasa *${appSettings.storeName}*.\n\nBerikut rincian nota Anda:\n*No Nota:* ${lastCreatedOrder.id}\n*Tanggal:* ${lastCreatedOrder.tanggal}\n*Estimasi Selesai:* ${lastCreatedOrder.estimasi}\n*Total Biaya:* Rp${Number(lastCreatedOrder.total).toLocaleString('id-ID')}\n*Status Bayar:* ${lastCreatedOrder.statusBayar}\n\n${appSettings.footerText}`;
-            
-            let url = `https://wa.me/${noHp}?text=${encodeURIComponent(text)}`;
+            if(targetWa.startsWith('0')) {
+                targetWa = '62' + targetWa.slice(1);
+            }
+
+            let pesanItems = "";
+            order.items.forEach(i => {
+                pesanItems += `- ${i.qty} ${i.satuan} ${i.nama} (Rp${(i.harga * i.qty).toLocaleString('id-ID')})\n`;
+            });
+
+            let pesan = `Halo Kak *${cleanNameIfUmum(order.nama)}*, terima kasih telah menggunakan jasa *${appSettings.storeName}*!\n\n` +
+                        `Berikut Rincian Nota Anda:\n` +
+                        `No Nota: *${order.id}*\n` +
+                        `Tanggal: ${order.tanggal}\n` +
+                        `Estimasi Selesai: *${order.estimasi}*\n\n` +
+                        `*Rincian Cucian:*\n${pesanItems}\n` +
+                        `Total: *Rp${Number(order.total).toLocaleString('id-ID')}*\n` +
+                        `Dibayar: Rp${Number(order.bayar).toLocaleString('id-ID')}\n` +
+                        `Sisa Kekurangan: *Rp${Number(order.sisa).toLocaleString('id-ID')}*\n` +
+                        `Status: *${order.statusBayar}*\n\n` +
+                        `*Ketentuan Garansi:*\n${appSettings.garansiText}\n\n` +
+                        `${appSettings.footerText}`;
+
+            let url = `https://wa.me/${targetWa}?text=` + encodeURIComponent(pesan);
             window.open(url, '_blank');
+        }
+
+        function cleanNameIfUmum(n) {
+            return n.replace(' (Umum)', '');
         }
 
         function filterOrder(status) {
             currentFilterStatus = status;
-            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(st => {
-                const btn = document.getElementById(`btn-cat-${st === 'SIAP DIAMBIL' ? 'siap' : st.toLowerCase()}`);
+            ['SEMUA', 'DIPROSES', 'SIAP DIAMBIL', 'SELESAI'].forEach(s => {
+                const btn = document.getElementById(`btn-cat-${s.toLowerCase().replace(' ', '')}`);
                 if(btn) {
-                    if(st === status) {
+                    if(s === status) {
                         btn.className = "p-2 bg-pink-600 text-white rounded-xl shadow-xs";
                     } else {
                         btn.className = "p-2 bg-white text-gray-600 rounded-xl shadow-xs";
@@ -2111,128 +2159,142 @@
 
             let filtered = dataOrder.filter(o => {
                 let matchKeyword = o.id.toLowerCase().includes(keyword) || o.nama.toLowerCase().includes(keyword);
-                if (currentFilterStatus === 'SEMUA') return matchKeyword;
+                if(currentFilterStatus === 'SEMUA') return matchKeyword;
                 return matchKeyword && o.status === currentFilterStatus;
             });
 
             if(filtered.length === 0) {
-                container.innerHTML = '<div class="text-center p-6 text-xs text-gray-400 bg-white rounded-2xl shadow-sm">Belum ada data order laundry</div>';
+                container.innerHTML = '<div class="text-center p-4 text-xs text-gray-400 bg-white rounded-2xl">Belum ada data order laundry</div>';
                 return;
             }
 
-            filtered.forEach(o => {
-                let badgeColor = 'bg-blue-100 text-blue-700';
-                if(o.status === 'SIAP DIAMBIL') badgeColor = 'bg-amber-100 text-amber-700';
-                if(o.status === 'SELESAI') badgeColor = 'bg-emerald-100 text-emerald-700';
+            filtered.forEach((o) => {
+                let badgeColor = "bg-blue-100 text-blue-800";
+                if(o.status === 'SIAP DIAMBIL') badgeColor = "bg-amber-100 text-amber-800";
+                if(o.status === 'SELESAI') badgeColor = "bg-emerald-100 text-emerald-800";
 
                 let itemsSummary = o.items.map(i => `${i.qty} ${i.satuan} ${i.nama}`).join(', ');
 
                 container.innerHTML += `
-                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2.5 border border-gray-100">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-gray-800 text-sm">${o.id}</span> - <span class="text-xs text-gray-600 font-semibold">${o.nama}</span>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2 text-xs border border-slate-100">
+                        <div class="flex justify-between items-center font-bold">
+                            <span class="text-pink-600">${o.id} - ${o.nama}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] ${badgeColor}">${o.status}</span>
+                        </div>
+                        <div class="text-gray-600">
+                            <p><strong>Layanan:</strong> ${itemsSummary}</p>
+                            <p><strong>Total:</strong> Rp${Number(o.total).toLocaleString('id-ID')} | <span class="${o.statusBayar === 'LUNAS' ? 'text-emerald-600' : 'text-rose-600'} font-bold">${o.statusBayar}</span></p>
+                            <p><strong>Estimasi:</strong> ${o.estimasi}</p>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t">
+                            <div class="space-x-1">
+                                <select onchange="updateStatusCucian('${o.id}', this.value)" class="p-1.5 border rounded-lg text-[11px] bg-gray-50 font-bold">
+                                    <option value="DIPROSES" ${o.status === 'DIPROSES' ? 'selected' : ''}>Proses</option>
+                                    <option value="SIAP DIAMBIL" ${o.status === 'SIAP DIAMBIL' ? 'selected' : ''}>Siap Diambil</option>
+                                    <option value="SELESAI" ${o.status === 'SELESAI' ? 'selected' : ''}>Selesai</option>
+                                </select>
                             </div>
-                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${badgeColor}">${o.status}</span>
-                        </div>
-                        <div class="text-xs text-gray-500 space-y-0.5">
-                            <div><i class="fa-solid fa-shirt mr-1 text-pink-500"></i> ${itemsSummary}</div>
-                            <div><i class="fa-solid fa-calendar mr-1 text-gray-400"></i> Masuk: ${o.tanggal} | Est: <span class="text-pink-600 font-semibold">${o.estimasi}</span></div>
-                            <div><i class="fa-solid fa-wallet mr-1 text-gray-400"></i> Total: <b>Rp${Number(o.total).toLocaleString('id-ID')}</b> (${o.statusBayar})</div>
-                        </div>
-                        <div class="flex flex-wrap gap-1.5 pt-2 border-t">
-                            <select onchange="updateStatusOrder('${o.id}', this.value)" class="p-1.5 border rounded-xl text-xs bg-gray-50 font-semibold focus:outline-pink-600">
-                                <option value="DIPROSES" ${o.status === 'DIPROSES' ? 'selected' : ''}>Proses</option>
-                                <option value="SIAP DIAMBIL" ${o.status === 'SIAP DIAMBIL' ? 'selected' : ''}>Siap Diambil</option>
-                                <option value="SELESAI" ${o.status === 'SELESAI' ? 'selected' : ''}>Selesai & Diambil</option>
-                            </select>
-                            <button onclick="revisiOrder('${o.id}')" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition">Revisi</button>
-                            <button onclick="lihatNotaLama(${JSON.stringify(o).replace(/"/g, '&quot;')})" class="bg-pink-50 text-pink-700 hover:bg-pink-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition">Nota</button>
-                            <button onclick="resetAtauHapusOrder('${o.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Reset/Hapus Order"><i class="fa-solid fa-trash"></i></button>
+                            <div class="space-x-1 flex items-center">
+                                <button onclick="revisiOrder('${o.id}')" class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-bold" title="Revisi Nota">Revisi</button>
+                                <button onclick="resetAtauHapusOrder('${o.id}')" class="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg font-bold" title="Reset / Hapus Order">Reset/Hapus</button>
+                                <button onclick="cetakNotaUlang('${o.id}')" class="bg-pink-100 text-pink-700 px-2.5 py-1 rounded-lg font-bold">Nota</button>
+                            </div>
                         </div>
                     </div>`;
             });
         }
 
-        function lihatNotaLama(order) {
-            lastCreatedOrder = order;
-            tampilkanNotaHasil(order);
-        }
-
-        async function updateStatusOrder(id, statusBaru) {
+        async function updateStatusCucian(id, newStatus) {
             if (!supabaseClient) return;
             const order = dataOrder.find(o => o.id === id);
             if(order) {
-                order.status = statusBaru;
-                await supabaseClient.from('orders').update({ status: statusBaru }).eq('invoice_id', id);
+                order.status = newStatus;
+                await supabaseClient.from('orders').update({ status: newStatus }).eq('invoice_id', id);
                 renderDaftarOrder();
                 updateDashboardKeuangan();
             }
         }
 
-        function updateDashboardKeuangan() {
-            let totalPemasukanMasuk = 0;
-            let totalPengeluaran = 0;
+        function cetakNotaUlang(id) {
+            const order = dataOrder.find(o => o.id === id);
+            if(order) {
+                lastCreatedOrder = order;
+                tampilkanNotaView(order);
+            }
+        }
 
+        function updateDashboardKeuangan() {
+            let totalMasuk = 0;
             let sumCash = 0;
             let sumTransfer = 0;
             let sumQris = 0;
             let sumMember = 0;
 
             dataOrder.forEach(o => {
-                let bayarReal = Number(o.bayar || 0);
-                totalPemasukanMasuk += bayarReal;
-
-                if(o.metode === 'Cash') sumCash += bayarReal;
-                if(o.metode === 'Transfer') sumTransfer += bayarReal;
-                if(o.metode === 'QRIS') sumQris += bayarReal;
-                if(o.metode === 'Member') sumMember += bayarReal;
+                let masuk = Number(o.bayar) || 0;
+                totalMasuk += masuk;
+                if(o.metode === 'Cash') sumCash += masuk;
+                else if(o.metode === 'Transfer') sumTransfer += masuk;
+                else if(o.metode === 'QRIS') sumQris += masuk;
+                else if(o.metode === 'Member') sumMember += masuk;
             });
 
+            let totalKeluar = 0;
             dataPengeluaran.forEach(e => {
-                totalPengeluaran += Number(e.amount || 0);
+                totalKeluar += Number(e.amount) || 0;
             });
 
-            let saldoKasBersih = totalPemasukanMasuk - totalPengeluaran;
+            let saldoBersih = totalMasuk - totalKeluar;
 
-            const dashPendapatan = document.getElementById('dash-pendapatan');
-            const headerPendapatan = document.getElementById('header-pendapatan');
-            const dashOrder = document.getElementById('dash-total-order');
-            const dashExp = document.getElementById('dash-total-pengeluaran');
-            const dashMember = document.getElementById('dash-total-member');
+            document.getElementById('header-pendapatan').innerText = 'Rp ' + saldoBersih.toLocaleString('id-ID');
+            document.getElementById('dash-pendapatan').innerText = 'Rp ' + saldoBersih.toLocaleString('id-ID');
+            document.getElementById('dash-total-order').innerText = dataOrder.length;
+            document.getElementById('dash-total-pengeluaran').innerText = 'Rp ' + totalKeluar.toLocaleString('id-ID');
+            document.getElementById('dash-total-member').innerText = dataPelanggan.length;
 
-            if(dashPendapatan) dashPendapatan.innerText = 'Rp' + saldoKasBersih.toLocaleString('id-ID');
-            if(headerPendapatan) headerPendapatan.innerText = 'Rp' + saldoKasBersih.toLocaleString('id-ID');
-            if(dashOrder) dashOrder.innerText = dataOrder.length;
-            if(dashExp) dashExp.innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
-            if(dashMember) dashMember.innerText = dataPelanggan.length;
+            const cDiproses = dataOrder.filter(o => o.status === 'DIPROSES').length;
+            const cSiap = dataOrder.filter(o => o.status === 'SIAP DIAMBIL').length;
+            const cSelesai = dataOrder.filter(o => o.status === 'SELESAI').length;
 
-            let countDiproses = dataOrder.filter(o => o.status === 'DIPROSES').length;
-            let countSiap = dataOrder.filter(o => o.status === 'SIAP DIAMBIL').length;
-            let countSelesai = dataOrder.filter(o => o.status === 'SELESAI').length;
+            document.getElementById('count-diproses').innerText = cDiproses;
+            document.getElementById('count-siap').innerText = cSiap;
+            document.getElementById('count-selesai').innerText = cSelesai;
 
-            if(document.getElementById('count-diproses')) document.getElementById('count-diproses').innerText = countDiproses;
-            if(document.getElementById('count-siap')) document.getElementById('count-siap').innerText = countSiap;
-            if(document.getElementById('count-selesai')) document.getElementById('count-selesai').innerText = countSelesai;
+            const finPem = document.getElementById('fin-pemasukan');
+            const finPeng = document.getElementById('fin-pengeluaran');
+            if(finPem) finPem.innerText = 'Rp' + totalMasuk.toLocaleString('id-ID');
+            if(finPeng) finPeng.innerText = 'Rp' + totalKeluar.toLocaleString('id-ID');
 
-            if(document.getElementById('fin-pemasukan')) document.getElementById('fin-pemasukan').innerText = 'Rp' + totalPemasukanMasuk.toLocaleString('id-ID');
-            if(document.getElementById('fin-pengeluaran')) document.getElementById('fin-pengeluaran').innerText = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
+            document.getElementById('sum-cash').innerText = 'Rp' + sumCash.toLocaleString('id-ID');
+            document.getElementById('sum-transfer').innerText = 'Rp' + sumTransfer.toLocaleString('id-ID');
+            document.getElementById('sum-qris').innerText = 'Rp' + sumQris.toLocaleString('id-ID');
+            document.getElementById('sum-member').innerText = 'Rp' + sumMember.toLocaleString('id-ID');
 
-            if(document.getElementById('sum-cash')) document.getElementById('sum-cash').innerText = 'Rp' + sumCash.toLocaleString('id-ID');
-            if(document.getElementById('sum-transfer')) document.getElementById('sum-transfer').innerText = 'Rp' + sumTransfer.toLocaleString('id-ID');
-            if(document.getElementById('sum-qris')) document.getElementById('sum-qris').innerText = 'Rp' + sumQris.toLocaleString('id-ID');
-            if(document.getElementById('sum-member')) document.getElementById('sum-member').innerText = 'Rp' + sumMember.toLocaleString('id-ID');
+            const lapTotPem = document.getElementById('lap-tot-pemasukan');
+            const lapTotPeng = document.getElementById('lap-tot-pengeluaran');
+            const lapTotBersih = document.getElementById('lap-tot-bersih');
+            const lapTanggalCetak = document.getElementById('laporan-tanggal-cetak');
+
+            if(lapTotPem) lapTotPem.innerText = 'Rp' + totalMasuk.toLocaleString('id-ID');
+            if(lapTotPeng) lapTotPeng.innerText = 'Rp' + totalKeluar.toLocaleString('id-ID');
+            if(lapTotBersih) lapTotBersih.innerText = 'Rp' + saldoBersih.toLocaleString('id-ID');
+            if(lapTanggalCetak) lapTanggalCetak.innerText = 'Dicetak pada: ' + todayString;
+        }
+
+        function cetakLaporanKeuangan() {
+            updateDashboardKeuangan();
+            document.getElementById('laporan-store-name').innerText = appSettings.storeName.toUpperCase();
+            switchView('view-laporan-cetak');
         }
 
         function renderChartAnalitik() {
             const ctx = document.getElementById('chartAnalitik');
             if(!ctx) return;
 
-            let totalPemasukan = 0;
-            dataOrder.forEach(o => totalPemasukan += Number(o.bayar || 0));
-
+            let totalMasuk = 0;
+            dataOrder.forEach(o => { totalMasuk += Number(o.bayar) || 0; });
             let totalKeluar = 0;
-            dataPengeluaran.forEach(e => totalKeluar += Number(e.amount || 0));
+            dataPengeluaran.forEach(e => { totalKeluar += Number(e.amount) || 0; });
 
             if(chartInstance) {
                 chartInstance.destroy();
@@ -2241,10 +2303,10 @@
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Pemasukan Kas', 'Pengeluaran'],
+                    labels: ['Pemasukan Kas', 'Pengeluaran Toko'],
                     datasets: [{
                         label: 'Nominal (Rp)',
-                        data: [totalPemasukan, totalKeluar],
+                        data: [totalMasuk, totalKeluar],
                         backgroundColor: ['#059669', '#e11d48'],
                         borderRadius: 8
                     }]
@@ -2256,22 +2318,6 @@
                     scales: { y: { beginAtZero: true } }
                 }
             });
-        }
-
-        function cetakLaporanKeuangan() {
-            let totMasuk = 0;
-            dataOrder.forEach(o => totMasuk += Number(o.bayar || 0));
-            let totKeluar = 0;
-            dataPengeluaran.forEach(e => totKeluar += Number(e.amount || 0));
-            let totBersih = totMasuk - totKeluar;
-
-            document.getElementById('laporan-store-name').innerText = appSettings.storeName.toUpperCase();
-            document.getElementById('laporan-tanggal-cetak').innerText = `Dicetak pada: ${todayString}`;
-            document.getElementById('lap-tot-pemasukan').innerText = 'Rp' + totMasuk.toLocaleString('id-ID');
-            document.getElementById('lap-tot-pengeluaran').innerText = 'Rp' + totKeluar.toLocaleString('id-ID');
-            document.getElementById('lap-tot-bersih').innerText = 'Rp' + totBersih.toLocaleString('id-ID');
-
-            switchView('view-laporan-cetak');
         }
     </script>
 </body>
